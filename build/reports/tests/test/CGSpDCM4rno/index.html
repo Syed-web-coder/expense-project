@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta http-equiv="x-ua-compatible" content="IE=edge"/>
-<title>Test results - com.uptimecrew.expense.model.TransactionDraftTest</title>
+<title>Test results - com.uptimecrew.expense.model.ReceiptTest</title>
 <link href="../css/base-style.css" rel="stylesheet" type="text/css"/>
 <link href="../css/style.css" rel="stylesheet" type="text/css"/>
 <script src="../js/report.js" type="text/javascript"></script>
@@ -12,7 +12,7 @@
 <div id="content">
 <div class="breadcrumbs">
 <a class="breadcrumb" href="../index.html">all</a> &gt; 
-<span class="breadcrumb">com.uptimecrew.expense.model.TransactionDraftTest</span>
+<span class="breadcrumb">com.uptimecrew.expense.model.ReceiptTest</span>
 </div>
 <div class="tab-container">
 <ul class="tabLinks">
@@ -22,7 +22,7 @@
 </ul>
 <div class="tab">
 <h2>Gradle Test Run :test</h2>
-<h1>TransactionDraftTest</h1>
+<h1>ReceiptTest</h1>
 <div class="tab-container">
 <ul class="tabLinks">
 <li>
@@ -41,7 +41,7 @@
 <tr>
 <td>
 <div class="infoBox">
-<div class="counter">4</div>
+<div class="counter">8</div>
 <p>tests</p>
 </div>
 </td>
@@ -59,7 +59,7 @@
 </td>
 <td>
 <div class="infoBox duration">
-<div class="counter">0.005s</div>
+<div class="counter">0.008s</div>
 <p>duration</p>
 </div>
 </td>
@@ -89,26 +89,8 @@
 </tr>
 </thead>
 <tr>
-<td class="success">constructs_with_valid_inputs()</td>
-<td class="path" hidden="">constructs_with_valid_inputs()</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0.003s</td>
-<td class="success">100%</td>
-</tr>
-<tr>
-<td class="success">equal_instances_have_equal_hashcodes()</td>
-<td class="path" hidden="">equal_instances_have_equal_hashcodes()</td>
-<td>1</td>
-<td>0</td>
-<td>0</td>
-<td>0s</td>
-<td class="success">100%</td>
-</tr>
-<tr>
-<td class="success">rejects_negative_amount()</td>
-<td class="path" hidden="">rejects_negative_amount()</td>
+<td class="success">blankIdThrowsIllegalArgumentException()</td>
+<td class="path" hidden="">blankIdThrowsIllegalArgumentException()</td>
 <td>1</td>
 <td>0</td>
 <td>0</td>
@@ -116,8 +98,62 @@
 <td class="success">100%</td>
 </tr>
 <tr>
-<td class="success">rejects_null_merchantName()</td>
-<td class="path" hidden="">rejects_null_merchantName()</td>
+<td class="success">blankImageRefThrowsIllegalArgumentException()</td>
+<td class="path" hidden="">blankImageRefThrowsIllegalArgumentException()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">blankTransactionIdThrowsIllegalArgumentException()</td>
+<td class="path" hidden="">blankTransactionIdThrowsIllegalArgumentException()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">gettersReturnConstructorValues()</td>
+<td class="path" hidden="">gettersReturnConstructorValues()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">nullCapturedAtThrowsNullPointerException()</td>
+<td class="path" hidden="">nullCapturedAtThrowsNullPointerException()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0.001s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">nullIdThrowsNullPointerException()</td>
+<td class="path" hidden="">nullIdThrowsNullPointerException()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0.001s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">nullImageRefThrowsNullPointerException()</td>
+<td class="path" hidden="">nullImageRefThrowsNullPointerException()</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+<td>0.001s</td>
+<td class="success">100%</td>
+</tr>
+<tr>
+<td class="success">nullTransactionIdThrowsNullPointerException()</td>
+<td class="path" hidden="">nullTransactionIdThrowsNullPointerException()</td>
 <td>1</td>
 <td>0</td>
 <td>0</td>

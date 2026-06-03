@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.uptimecrew.expense.model.ReceiptTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-06-03T19:27:22.568Z" hostname="DESKTOP-JB49I2B" time="0.008">
+  <properties/>
+  <testcase name="nullIdThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.001"/>
+  <testcase name="nullCapturedAtThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.001"/>
+  <testcase name="nullTransactionIdThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.001"/>
+  <testcase name="blankTransactionIdThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.0"/>
+  <testcase name="blankIdThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.001"/>
+  <testcase name="blankImageRefThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.0"/>
+  <testcase name="gettersReturnConstructorValues()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.0"/>
+  <testcase name="nullImageRefThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ReceiptTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
