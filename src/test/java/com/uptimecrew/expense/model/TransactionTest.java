@@ -13,11 +13,11 @@ class TransactionTest {
             "txn-001", "acc-001", new BigDecimal("487.50"),
             "Office Depot", LocalDate.of(2026, 3, 1)
         );
-        assertEquals("txn-001", t.getId());
-        assertEquals("acc-001", t.getAccountId());
-        assertEquals(0, new BigDecimal("487.50").compareTo(t.getAmount()));
-        assertEquals("Office Depot", t.getMerchantName());
-        assertEquals(LocalDate.of(2026, 3, 1), t.getOccurredOn());
+        assertEquals("txn-001", t.id());
+        assertEquals("acc-001", t.accountId());
+        assertEquals(0, new BigDecimal("487.50").compareTo(t.amount()));
+        assertEquals("Office Depot", t.merchantName());
+        assertEquals(LocalDate.of(2026, 3, 1), t.occurredOn());
     }
 
     @Test

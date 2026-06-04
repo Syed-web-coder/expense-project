@@ -24,11 +24,11 @@ public final class MerchantNameClassifier implements TransactionClassifier {
             LOG.warning("classify called with null transaction — rejecting input");
             throw new NullPointerException("transaction must not be null");
         }
-        String name = transaction.getMerchantName().toLowerCase();
+        String name = transaction.merchantName().toLowerCase();
         TransactionKind result = name.contains("refund")
             ? TransactionKind.REFUND
             : TransactionKind.PURCHASE;
-        LOG.info("Classified transaction " + transaction.getId() + " as " + result);
+        LOG.info("Classified transaction " + transaction.id() + " as " + result);
         return result;
     }
 }

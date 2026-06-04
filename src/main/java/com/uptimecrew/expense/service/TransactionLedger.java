@@ -31,7 +31,7 @@ public final class TransactionLedger {
         Objects.requireNonNull(transactions, "transactions must not be null");
         Map<String, Transaction> copy = new HashMap<>();
         for (Transaction t : transactions) {
-            copy.put(t.getId(), t);
+            copy.put(t.id(), t);
         }
         this.transactions = Collections.unmodifiableMap(copy);
         LOG.info("TransactionLedger created with " + this.transactions.size() + " transactions");
@@ -73,11 +73,11 @@ public final class TransactionLedger {
         Objects.requireNonNull(merchantFragment, "merchantFragment must not be null");
         Objects.requireNonNull(threshold, "threshold must not be null");
         List<Transaction> result = transactions.values().stream()
-            .filter(t -> t.getMerchantName().toLowerCase()
+            .filter(t -> t.merchantName().toLowerCase()
                 .contains(merchantFragment.toLowerCase())
-                && t.getAmount().compareTo(threshold) > 0)
-            .sorted(Comparator.comparing(Transaction::getAmount).reversed()
-                .thenComparing(Transaction::getMerchantName))
+                && t.amount().compareTo(threshold) > 0)
+            .sorted(Comparator.comparing(Transaction::amount).reversed()
+                .thenComparing(Transaction::merchantName))
             .collect(Collectors.toUnmodifiableList());
         if (result.isEmpty()) {
             LOG.warning("No transactions found for merchant fragment: " + merchantFragment
