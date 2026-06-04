@@ -73,7 +73,11 @@ public final class TransactionLedger {
         Objects.requireNonNull(merchantFragment, "merchantFragment must not be null");
         Objects.requireNonNull(threshold, "threshold must not be null");
         List<Transaction> result = transactions.values().stream()
+<<<<<<< HEAD
             .filter(t -> t.merchantName().toLowerCase()
+=======
+            .filter(t -> t.getMerchantName().toLowerCase()
+>>>>>>> main
                 .contains(merchantFragment.toLowerCase())
                 && t.amount().compareTo(threshold) > 0)
             .sorted(Comparator.comparing(Transaction::amount).reversed()
