@@ -30,7 +30,10 @@ public final class ExpenseClassificationService {
      * @throws NullPointerException if transaction is null
      */
     public TransactionKind classify(Transaction transaction) {
-        Objects.requireNonNull(transaction, "transaction must not be null");
+        if (transaction == null) {
+            LOG.warning("classify called with null transaction — rejecting input");
+            throw new NullPointerException("transaction must not be null");
+        }
         LOG.info("Classifying transaction " + transaction.id());
         TransactionKind result = classifier.classify(transaction);
         LOG.info("Transaction " + transaction.id() + " classified as " + result);
