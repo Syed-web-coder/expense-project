@@ -10,12 +10,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
  * Holds a ledger of transactions keyed by transaction ID.
  */
 public final class TransactionLedger {
+
+    private static final Logger LOG =
+        Logger.getLogger(TransactionLedger.class.getName());
 
     private final Map<String, Transaction> transactions;
 
@@ -30,6 +34,7 @@ public final class TransactionLedger {
             copy.put(t.getId(), t);
         }
         this.transactions = Collections.unmodifiableMap(copy);
+        LOG.info("TransactionLedger created with " + this.transactions.size() + " transactions");
     }
 
     /**
@@ -46,7 +51,13 @@ public final class TransactionLedger {
      */
     public Optional<Transaction> findById(String id) {
         Objects.requireNonNull(id, "id must not be null");
-        return Optional.ofNullable(transactions.get(id));
+        Optional<Transaction> result = Optional.ofNullable(transactions.get(id));
+        if (result.isEmpty()) {
+            LOG.warning("Transaction not found for id: " + id);
+        } else {
+            LOG.info("Transaction found for id: " + id);
+        }
+        return result;
     }
 
     /**
@@ -61,12 +72,20 @@ public final class TransactionLedger {
     public List<Transaction> findByMerchantAbove(String merchantFragment, BigDecimal threshold) {
         Objects.requireNonNull(merchantFragment, "merchantFragment must not be null");
         Objects.requireNonNull(threshold, "threshold must not be null");
-        return transactions.values().stream()
+        List<Transaction> result = transactions.values().stream()
             .filter(t -> t.getMerchantName().toLowerCase()
                 .contains(merchantFragment.toLowerCase())
                 && t.getAmount().compareTo(threshold) > 0)
             .sorted(Comparator.comparing(Transaction::getAmount).reversed()
                 .thenComparing(Transaction::getMerchantName))
             .collect(Collectors.toUnmodifiableList());
+        if (result.isEmpty()) {
+            LOG.warning("No transactions found for merchant fragment: " + merchantFragment
+                + " above threshold: " + threshold);
+        } else {
+            LOG.info("Found " + result.size() + " transactions for merchant fragment: "
+                + merchantFragment);
+        }
+        return result;
     }
 }
