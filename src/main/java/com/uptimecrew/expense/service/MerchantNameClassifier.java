@@ -20,7 +20,10 @@ public final class MerchantNameClassifier implements TransactionClassifier {
      */
     @Override
     public TransactionKind classify(Transaction transaction) {
-        Objects.requireNonNull(transaction, "transaction must not be null");
+        if (transaction == null) {
+            LOG.warning("classify called with null transaction — rejecting input");
+            throw new NullPointerException("transaction must not be null");
+        }
         String name = transaction.getMerchantName().toLowerCase();
         TransactionKind result = name.contains("refund")
             ? TransactionKind.REFUND
