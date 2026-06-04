@@ -39,10 +39,10 @@ public final class AmountThresholdClassifier implements TransactionClassifier {
             LOG.warning("classify called with null transaction — rejecting input");
             throw new NullPointerException("transaction must not be null");
         }
-        TransactionKind result = transaction.getAmount().compareTo(threshold) > 0
+        TransactionKind result = transaction.amount().compareTo(threshold) > 0
             ? TransactionKind.PURCHASE
             : TransactionKind.OTHER;
-        LOG.info("Classified transaction " + transaction.getId() + " as " + result);
+        LOG.info("Classified transaction " + transaction.id() + " as " + result);
         return result;
     }
 

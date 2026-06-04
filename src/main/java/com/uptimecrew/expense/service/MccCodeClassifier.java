@@ -41,10 +41,10 @@ public final class MccCodeClassifier implements TransactionClassifier {
             throw new NullPointerException("transaction must not be null");
         }
         TransactionKind result = refundCodes.contains(
-            transaction.getMerchantName().toLowerCase())
+            transaction.merchantName().toLowerCase())
             ? TransactionKind.REFUND
             : TransactionKind.PURCHASE;
-        LOG.info("Classified transaction " + transaction.getId() + " as " + result);
+        LOG.info("Classified transaction " + transaction.id() + " as " + result);
         return result;
     }
 
