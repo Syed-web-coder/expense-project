@@ -1,55 +1,34 @@
 package com.uptimecrew.expense.service;
 
-import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
-import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
-
-import java.math.BigDecimal;
-import java.util.Map;
+import com.uptimecrew.expense.model.TransactionKind;
 import java.util.Objects;
-import java.util.UUID;
+import java.util.logging.Logger;
 
+/**
+ * Classifies transactions based on the merchant name.
+ */
 public final class MerchantNameClassifier implements TransactionClassifier {
 
-    // keyword (lower-case) → category.  Checked in insertion order.
-    private final Map<String, ExpenseCategory> keywordToCategory;
-
-    public MerchantNameClassifier(Map<String, ExpenseCategory> keywordToCategory) {
-        this.keywordToCategory = Map.copyOf(
-                Objects.requireNonNull(keywordToCategory, "keywordToCategory must not be null"));
-    }
+    private static final Logger LOG =
+        Logger.getLogger(MerchantNameClassifier.class.getName());
 
     /**
-     * Convenience factory with a built-in set of common merchant keywords.
+     * @param transaction the transaction to classify
+     * @return REFUND if merchant name contains "refund", PURCHASE otherwise
+     * @throws NullPointerException if transaction is null
      */
-    public static MerchantNameClassifier withDefaults() {
-        return new MerchantNameClassifier(Map.of(
-                "airline",  new ExpenseCategory(uuid(), "Travel",        new BigDecimal("100")),
-                "hotel",    new ExpenseCategory(uuid(), "Accommodation",  new BigDecimal("100")),
-                "restaurant", new ExpenseCategory(uuid(), "Meals",        new BigDecimal("50")),
-                "cafe",     new ExpenseCategory(uuid(), "Meals",          new BigDecimal("50")),
-                "pharmacy", new ExpenseCategory(uuid(), "Healthcare",     new BigDecimal("100")),
-                "software", new ExpenseCategory(uuid(), "Software",       new BigDecimal("100"))
-        ));
-    }
-
     @Override
-    public ExpenseCategory classify(Transaction transaction) {
-        Objects.requireNonNull(transaction, "transaction must not be null");
-        String merchantName = transaction.getMerchantName();
-        if (merchantName == null || merchantName.isBlank()) {
-            throw new UnrecognizedMerchantException("merchant name is blank or empty");
+    public TransactionKind classify(Transaction transaction) {
+        if (transaction == null) {
+            LOG.warning("classify called with null transaction — rejecting input");
+            throw new NullPointerException("transaction must not be null");
         }
-        String lower = merchantName.toLowerCase();
-        for (Map.Entry<String, ExpenseCategory> entry : keywordToCategory.entrySet()) {
-            if (lower.contains(entry.getKey())) {
-                return entry.getValue();
-            }
-        }
-        throw new UnrecognizedMerchantException("Unrecognized merchant: " + merchantName);
-    }
-
-    private static String uuid() {
-        return UUID.randomUUID().toString();
+        String name = transaction.merchantName().toLowerCase();
+        TransactionKind result = name.contains("refund")
+            ? TransactionKind.REFUND
+            : TransactionKind.PURCHASE;
+        LOG.info("Classified transaction " + transaction.id() + " as " + result);
+        return result;
     }
 }

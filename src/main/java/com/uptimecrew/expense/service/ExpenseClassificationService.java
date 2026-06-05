@@ -1,33 +1,39 @@
 package com.uptimecrew.expense.service;
 
-import com.uptimecrew.expense.exception.ExpenseClassificationException;
-import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.uptimecrew.expense.model.TransactionKind;
 import java.util.Objects;
+import java.util.logging.Logger;
 
+/**
+ * Service that classifies transactions using an injected strategy.
+ * The strategy is provided at construction time and never constructed internally.
+ */
 public final class ExpenseClassificationService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ExpenseClassificationService.class);
+    private static final Logger LOG =
+        Logger.getLogger(ExpenseClassificationService.class.getName());
 
     private final TransactionClassifier classifier;
 
+    /**
+     * @param classifier the classification strategy to use, must not be null
+     * @throws NullPointerException if classifier is null
+     */
     public ExpenseClassificationService(TransactionClassifier classifier) {
         this.classifier = Objects.requireNonNull(classifier, "classifier must not be null");
     }
 
-    public ExpenseCategory classify(Transaction transaction) {
+    /**
+     * @param transaction the transaction to classify, must not be null
+     * @return the TransactionKind for this transaction
+     * @throws NullPointerException if transaction is null
+     */
+    public TransactionKind classify(Transaction transaction) {
         Objects.requireNonNull(transaction, "transaction must not be null");
-        LOG.info("classifying transaction {}", transaction.getId());
-        try {
-            ExpenseCategory result = classifier.classify(transaction);
-            LOG.info("transaction {} classified as {}", transaction.getId(), result);
-            return result;
-        } catch (ExpenseClassificationException ex) {
-            LOG.warn("strategy failed: {}", ex.getMessage(), ex);
-            throw ex;
-        }
+        LOG.info("Classifying transaction " + transaction.id());
+        TransactionKind result = classifier.classify(transaction);
+        LOG.info("Transaction " + transaction.id() + " classified as " + result);
+        return result;
     }
 }

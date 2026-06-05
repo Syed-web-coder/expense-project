@@ -1,35 +1,46 @@
 package com.uptimecrew.expense.model;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 
+/**
+ * Represents a receipt linked to a transaction.
+ */
 public final class Receipt {
-
     private final String id;
     private final String transactionId;
     private final String imageRef;
-    private final Instant capturedAt;
+    private final LocalDate capturedAt;
 
-    public Receipt(String id, String transactionId, String imageRef, Instant capturedAt) {
-        this.id = requireNonBlank(id, "id");
-        this.transactionId = requireNonBlank(transactionId, "transactionId");
-        this.imageRef = requireNonBlank(imageRef, "imageRef");
+    /**
+     * @param id            unique receipt ID
+     * @param transactionId ID of the linked transaction
+     * @param imageRef      reference to the receipt image
+     * @param capturedAt    date the receipt was captured
+     * @throws NullPointerException if any argument is null
+     */
+    public Receipt(String id, String transactionId, String imageRef, LocalDate capturedAt) {
+        this.id = Objects.requireNonNull(id, "id must not be null");
+        this.transactionId = Objects.requireNonNull(transactionId, "transactionId must not be null");
+        this.imageRef = Objects.requireNonNull(imageRef, "imageRef must not be null");
         this.capturedAt = Objects.requireNonNull(capturedAt, "capturedAt must not be null");
     }
 
-    public String getId()            { return id; }
+    /** @return the receipt ID */
+    public String getId() { return id; }
+    /** @return the transaction ID */
     public String getTransactionId() { return transactionId; }
-    public String getImageRef()      { return imageRef; }
-    public Instant getCapturedAt()   { return capturedAt; }
+    /** @return the image reference */
+    public String getImageRef() { return imageRef; }
+    /** @return the date the receipt was captured */
+    public LocalDate getCapturedAt() { return capturedAt; }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Receipt r)) return false;
-        return id.equals(r.id)
-                && transactionId.equals(r.transactionId)
-                && imageRef.equals(r.imageRef)
-                && capturedAt.equals(r.capturedAt);
+        if (!(o instanceof Receipt other)) return false;
+        return id.equals(other.id) && transactionId.equals(other.transactionId)
+            && imageRef.equals(other.imageRef) && capturedAt.equals(other.capturedAt);
     }
 
     @Override
@@ -39,15 +50,7 @@ public final class Receipt {
 
     @Override
     public String toString() {
-        return "Receipt{id='" + id + "', transactionId='" + transactionId
-                + "', imageRef='" + imageRef + "', capturedAt=" + capturedAt + '}';
-    }
-
-    private static String requireNonBlank(String value, String fieldName) {
-        Objects.requireNonNull(value, fieldName + " must not be null");
-        if (value.isBlank()) {
-            throw new IllegalArgumentException(fieldName + " must not be blank");
-        }
-        return value;
+        return "Receipt{id=" + id + ", transactionId=" + transactionId +
+            ", imageRef=" + imageRef + ", capturedAt=" + capturedAt + "}";
     }
 }

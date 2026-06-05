@@ -1,13 +1,15 @@
 package com.uptimecrew.expense.service;
 
-import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
+import com.uptimecrew.expense.model.TransactionKind;
 
+/**
+ * Classifies a transaction into a TransactionKind.
+ */
 public interface TransactionClassifier {
-
     /**
-     * Returns the best-matching category for the given transaction, or
-     * {@code null} if no category can be determined.
+     * @param transaction the transaction to classify
+     * @return the TransactionKind for this transaction
      */
-    ExpenseCategory classify(Transaction transaction);
+    TransactionKind classify(Transaction transaction);
 }
