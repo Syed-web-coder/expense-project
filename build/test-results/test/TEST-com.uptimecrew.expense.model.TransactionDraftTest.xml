@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.uptimecrew.expense.model.TransactionDraftTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-06-05T19:18:30.460Z" hostname="DESKTOP-JB49I2B" time="0.009">
+  <properties/>
+  <testcase name="constructs_with_valid_inputs()" classname="com.uptimecrew.expense.model.TransactionDraftTest" time="0.002"/>
+  <testcase name="rejects_null_merchantName()" classname="com.uptimecrew.expense.model.TransactionDraftTest" time="0.001"/>
+  <testcase name="rejects_negative_amount()" classname="com.uptimecrew.expense.model.TransactionDraftTest" time="0.002"/>
+  <testcase name="equal_instances_have_equal_hashcodes()" classname="com.uptimecrew.expense.model.TransactionDraftTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

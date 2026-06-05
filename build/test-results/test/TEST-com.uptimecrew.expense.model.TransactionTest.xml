@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.uptimecrew.expense.model.TransactionTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-06-05T19:18:30.470Z" hostname="DESKTOP-JB49I2B" time="0.018">
+  <properties/>
+  <testcase name="nullOccurredOnThrowsNullPointerException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="amountIsStoredAtScale2()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="nullIdThrowsNullPointerException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="nullAmountThrowsNullPointerException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.0"/>
+  <testcase name="nullMerchantNameThrowsNullPointerException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.002"/>
+  <testcase name="negativeAmountThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.002"/>
+  <testcase name="blankIdThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="nullAccountIdThrowsNullPointerException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="gettersReturnConstructorValues()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <testcase name="blankMerchantNameThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.TransactionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
