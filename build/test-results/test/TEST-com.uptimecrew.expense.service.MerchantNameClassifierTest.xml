@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.uptimecrew.expense.service.MerchantNameClassifierTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-06-05T18:58:21.206Z" hostname="DESKTOP-JB49I2B" time="0.031">
+<testsuite name="com.uptimecrew.expense.service.MerchantNameClassifierTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-06-05T19:06:08.289Z" hostname="DESKTOP-JB49I2B" time="0.022">
   <properties/>
-  <testcase name="classifyIsCaseInsensitive()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.005"/>
+  <testcase name="classifyIsCaseInsensitive()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.006"/>
   <testcase name="airlineMerchantClassifiedAsTravel()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
   <testcase name="classifyReturnsExpenseCategoryInstance()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.004"/>
   <testcase name="nullKeywordMapThrowsNullPointerException()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
-  <testcase name="nullTransactionThrowsNullPointerException()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.003"/>
-  <testcase name="restaurantMerchantClassifiedAsMeals()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
-  <testcase name="unknownMerchantReturnsNull()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
-  <testcase name="customMapIsRespected()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
+  <testcase name="nullTransactionThrowsNullPointerException()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.002"/>
+  <testcase name="restaurantMerchantClassifiedAsMeals()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.001"/>
+  <testcase name="unknownMerchantThrowsUnrecognizedMerchantException()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.001"/>
+  <testcase name="customMapIsRespected()" classname="com.uptimecrew.expense.service.MerchantNameClassifierTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

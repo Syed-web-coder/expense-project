@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.service;
 
+import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
 import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
 
@@ -35,13 +36,17 @@ public final class MerchantNameClassifier implements TransactionClassifier {
     @Override
     public ExpenseCategory classify(Transaction transaction) {
         Objects.requireNonNull(transaction, "transaction must not be null");
-        String lower = transaction.getMerchantName().toLowerCase();
+        String merchantName = transaction.getMerchantName();
+        if (merchantName == null || merchantName.isBlank()) {
+            throw new UnrecognizedMerchantException("merchant name is blank or empty");
+        }
+        String lower = merchantName.toLowerCase();
         for (Map.Entry<String, ExpenseCategory> entry : keywordToCategory.entrySet()) {
             if (lower.contains(entry.getKey())) {
                 return entry.getValue();
             }
         }
-        return null;
+        throw new UnrecognizedMerchantException("Unrecognized merchant: " + merchantName);
     }
 
     private static String uuid() {

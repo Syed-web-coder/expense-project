@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.service;
 
+import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
 import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,11 +61,11 @@ class MerchantNameClassifierTest {
     }
 
     @Test
-    void unknownMerchantReturnsNull() {
+    void unknownMerchantThrowsUnrecognizedMerchantException() {
         Transaction tx = new Transaction(
                 UUID.randomUUID().toString(), "acc_1", AMOUNT, "Random Shop", DATE);
 
-        assertNull(classifier.classify(tx));
+        assertThrows(UnrecognizedMerchantException.class, () -> classifier.classify(tx));
     }
 
     @Test
