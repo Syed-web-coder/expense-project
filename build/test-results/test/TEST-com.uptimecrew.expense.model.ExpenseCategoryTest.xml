@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.uptimecrew.expense.model.ExpenseCategoryTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-06-05T19:13:29.510Z" hostname="DESKTOP-JB49I2B" time="0.103">
+<testsuite name="com.uptimecrew.expense.model.ExpenseCategoryTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-06-05T19:18:30.327Z" hostname="DESKTOP-JB49I2B" time="0.106">
   <properties/>
   <testcase name="blankNameThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.035"/>
-  <testcase name="negativePercentThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.002"/>
+  <testcase name="negativePercentThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
   <testcase name="nullIdThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.002"/>
-  <testcase name="percentIsStoredAtScale2()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.002"/>
+  <testcase name="percentIsStoredAtScale2()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
   <testcase name="percentAbove100ThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
-  <testcase name="nullNameThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
-  <testcase name="zeroPecentIsAccepted()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
+  <testcase name="nullNameThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.0"/>
+  <testcase name="zeroPecentIsAccepted()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.0"/>
   <testcase name="blankIdThrowsIllegalArgumentException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
   <testcase name="hundredPercentIsAccepted()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
-  <testcase name="gettersReturnConstructorValues()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.001"/>
+  <testcase name="gettersReturnConstructorValues()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.002"/>
   <testcase name="nullDeductiblePercentThrowsNullPointerException()" classname="com.uptimecrew.expense.model.ExpenseCategoryTest" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
