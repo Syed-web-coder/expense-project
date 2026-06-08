@@ -2,10 +2,9 @@ package com.uptimecrew.expense.service;
 
 import com.uptimecrew.expense.model.Transaction;
 import com.uptimecrew.expense.model.TransactionKind;
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static com.uptimecrew.expense.model.TransactionTestDataBuilder.aTransaction;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MerchantNameClassifierTest {
@@ -19,10 +18,7 @@ class MerchantNameClassifierTest {
 
     @Test
     void classify_regularMerchant_returnsPurchase() {
-        Transaction t = new Transaction(
-            "txn-001", "acc-001", new BigDecimal("487.50"),
-            "Office Depot", LocalDate.of(2026, 3, 1)
-        );
+        Transaction t = aTransaction().withId("txn-001").withMerchantName("Office Depot").build();
         TransactionKind result = classifier.classify(t);
         assertNotNull(result);
         assertEquals(TransactionKind.PURCHASE, result);
@@ -30,10 +26,7 @@ class MerchantNameClassifierTest {
 
     @Test
     void classify_refundMerchant_returnsRefund() {
-        Transaction t = new Transaction(
-            "txn-002", "acc-001", new BigDecimal("487.50"),
-            "refund - Office Depot", LocalDate.of(2026, 3, 1)
-        );
+        Transaction t = aTransaction().withId("txn-002").withMerchantName("refund - Office Depot").build();
         assertEquals(TransactionKind.REFUND, classifier.classify(t));
     }
 }

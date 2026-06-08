@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static com.uptimecrew.expense.model.TransactionTestDataBuilder.aTransaction;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TransactionLedgerTest {
@@ -18,12 +19,15 @@ class TransactionLedgerTest {
 
     @BeforeEach
     void setUp() {
-        t1 = new Transaction("txn-001", "acc-001", new BigDecimal("487.50"),
-            "Office Depot", LocalDate.of(2026, 3, 1));
-        t2 = new Transaction("txn-002", "acc-001", new BigDecimal("120.00"),
-            "Office Max", LocalDate.of(2026, 3, 2));
-        t3 = new Transaction("txn-003", "acc-002", new BigDecimal("50.00"),
-            "Starbucks", LocalDate.of(2026, 3, 3));
+        t1 = aTransaction().withId("txn-001").withAccountId("acc-001")
+            .withAmount(new BigDecimal("487.50")).withMerchantName("Office Depot")
+            .withOccurredOn(LocalDate.of(2026, 3, 1)).build();
+        t2 = aTransaction().withId("txn-002").withAccountId("acc-001")
+            .withAmount(new BigDecimal("120.00")).withMerchantName("Office Max")
+            .withOccurredOn(LocalDate.of(2026, 3, 2)).build();
+        t3 = aTransaction().withId("txn-003").withAccountId("acc-002")
+            .withAmount(new BigDecimal("50.00")).withMerchantName("Starbucks")
+            .withOccurredOn(LocalDate.of(2026, 3, 3)).build();
         ledger = new TransactionLedger(List.of(t1, t2, t3));
     }
 
