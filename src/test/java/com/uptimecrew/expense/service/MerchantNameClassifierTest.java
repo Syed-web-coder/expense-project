@@ -29,4 +29,9 @@ class MerchantNameClassifierTest {
         Transaction t = aTransaction().withId("txn-002").withMerchantName("refund - Office Depot").build();
         assertEquals(TransactionKind.REFUND, classifier.classify(t));
     }
+
+    @Test
+    void classify_nullTransaction_throwsNullPointerException() {
+        assertThrows(NullPointerException.class, () -> classifier.classify(null));
+    }
 }

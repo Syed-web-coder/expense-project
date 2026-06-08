@@ -89,4 +89,46 @@ class ExpenseCategoryTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new ExpenseCategory("", "Travel", PERCENT));
     }
+
+    // --- equals ---
+
+    @Test
+    void equals_sameInstance_returnsTrue() {
+        assertEquals(category, category);
+    }
+
+    @Test
+    void equals_null_returnsFalse() {
+        assertNotEquals(null, category);
+    }
+
+    @Test
+    void equals_differentType_returnsFalse() {
+        assertNotEquals(category, "not a category");
+    }
+
+    @Test
+    void equals_identicalCategory_returnsTrue() {
+        ExpenseCategory other = new ExpenseCategory("cat_001", "Travel", PERCENT);
+        assertEquals(category, other);
+        assertEquals(category.hashCode(), other.hashCode());
+    }
+
+    @Test
+    void equals_differentId_returnsFalse() {
+        ExpenseCategory other = new ExpenseCategory("cat_002", "Travel", PERCENT);
+        assertNotEquals(category, other);
+    }
+
+    @Test
+    void equals_differentName_returnsFalse() {
+        ExpenseCategory other = new ExpenseCategory("cat_001", "Meals", PERCENT);
+        assertNotEquals(category, other);
+    }
+
+    @Test
+    void equals_differentPercent_returnsFalse() {
+        ExpenseCategory other = new ExpenseCategory("cat_001", "Travel", new BigDecimal("50"));
+        assertNotEquals(category, other);
+    }
 }

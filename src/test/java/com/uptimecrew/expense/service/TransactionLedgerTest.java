@@ -72,4 +72,22 @@ class TransactionLedgerTest {
     void constructor_nullCollection_throwsNullPointerException() {
         assertThrows(NullPointerException.class, () -> new TransactionLedger(null));
     }
+
+    @Test
+    void findByMerchantAbove_merchantMatchesButAmountTooLow_returnsEmpty() {
+        List<Transaction> result = ledger.findByMerchantAbove("starbucks", new BigDecimal("100.00"));
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findByMerchantAbove_nullMerchantFragment_throwsNullPointerException() {
+        assertThrows(NullPointerException.class,
+                () -> ledger.findByMerchantAbove(null, new BigDecimal("10.00")));
+    }
+
+    @Test
+    void findByMerchantAbove_nullThreshold_throwsNullPointerException() {
+        assertThrows(NullPointerException.class,
+                () -> ledger.findByMerchantAbove("office", null));
+    }
 }

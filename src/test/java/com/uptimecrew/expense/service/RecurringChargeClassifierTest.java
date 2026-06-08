@@ -1,12 +1,16 @@
 package com.uptimecrew.expense.service;
 
 import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
+import com.uptimecrew.expense.model.Transaction;
+import com.uptimecrew.expense.model.TransactionKind;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static com.uptimecrew.expense.model.TransactionTestDataBuilder.aTransaction;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RecurringChargeClassifierTest {
 
@@ -65,5 +69,19 @@ class RecurringChargeClassifierTest {
         assertThatThrownBy(() -> classifier.classify(merchant))
                 .isInstanceOf(UnrecognizedMerchantException.class)
                 .hasMessageContaining("null");
+    }
+
+    @Test
+    @DisplayName("classify(Transaction) with known subscription merchant returns OTHER")
+    void classify_transactionWithKnownSubscription_returnsOther() {
+        Transaction t = aTransaction().withMerchantName("Netflix").build();
+        assertEquals(TransactionKind.OTHER, classifier.classify(t));
+    }
+
+    @Test
+    @DisplayName("classify(Transaction) with unknown merchant returns PURCHASE")
+    void classify_transactionWithUnknownMerchant_returnsPurchase() {
+        Transaction t = aTransaction().withMerchantName("Office Depot").build();
+        assertEquals(TransactionKind.PURCHASE, classifier.classify(t));
     }
 }
