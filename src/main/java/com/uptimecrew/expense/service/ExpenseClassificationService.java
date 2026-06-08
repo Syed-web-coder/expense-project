@@ -3,7 +3,8 @@ package com.uptimecrew.expense.service;
 import com.uptimecrew.expense.model.Transaction;
 import com.uptimecrew.expense.model.TransactionKind;
 import java.util.Objects;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service that classifies transactions using an injected strategy.
@@ -12,7 +13,7 @@ import java.util.logging.Logger;
 public final class ExpenseClassificationService {
 
     private static final Logger LOG =
-        Logger.getLogger(ExpenseClassificationService.class.getName());
+        LoggerFactory.getLogger(ExpenseClassificationService.class);
 
     private final TransactionClassifier classifier;
 
@@ -31,9 +32,14 @@ public final class ExpenseClassificationService {
      */
     public TransactionKind classify(Transaction transaction) {
         Objects.requireNonNull(transaction, "transaction must not be null");
-        LOG.info("Classifying transaction " + transaction.id());
-        TransactionKind result = classifier.classify(transaction);
-        LOG.info("Transaction " + transaction.id() + " classified as " + result);
-        return result;
+        LOG.info("Classifying transaction {}", transaction.id());
+        try {
+            TransactionKind result = classifier.classify(transaction);
+            LOG.info("Transaction {} classified as {}", transaction.id(), result);
+            return result;
+        } catch (RuntimeException e) {
+            LOG.warn("Classification failed for transaction {}: {}", transaction.id(), e.getMessage());
+            throw e;
+        }
     }
 }

@@ -1,8 +1,8 @@
 package com.uptimecrew.expense.service;
 
 import com.uptimecrew.expense.exception.TransactionParseException;
-import com.uptimecrew.expense.model.ExpenseCategory;
 import com.uptimecrew.expense.model.Transaction;
+import com.uptimecrew.expense.model.TransactionKind;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -10,7 +10,7 @@ import java.util.Objects;
 public final class ParseFailureClassifier implements TransactionClassifier {
 
     @Override
-    public ExpenseCategory classify(Transaction transaction) {
+    public TransactionKind classify(Transaction transaction) {
         Objects.requireNonNull(transaction, "transaction must not be null");
         try {
             throw new IOException("synthetic cause");

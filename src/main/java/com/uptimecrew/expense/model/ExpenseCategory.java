@@ -1,6 +1,7 @@
 package com.uptimecrew.expense.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
@@ -21,7 +22,10 @@ public final class ExpenseCategory {
     public ExpenseCategory(String id, String name, BigDecimal deductiblePercent) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.name = Objects.requireNonNull(name, "name must not be null");
-        this.deductiblePercent = Objects.requireNonNull(deductiblePercent, "deductiblePercent must not be null");
+        this.deductiblePercent = Objects.requireNonNull(deductiblePercent, "deductiblePercent must not be null")
+                .setScale(2, RoundingMode.HALF_UP);
+        if (id.isBlank())
+            throw new IllegalArgumentException("id must not be blank");
         if (name.isBlank())
             throw new IllegalArgumentException("name must not be blank");
         if (deductiblePercent.compareTo(BigDecimal.ZERO) < 0 ||

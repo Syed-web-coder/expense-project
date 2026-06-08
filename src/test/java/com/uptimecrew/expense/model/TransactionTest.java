@@ -37,6 +37,14 @@ class TransactionTest {
     }
 
     @Test
+    void rejects_blank_merchantName() {
+        assertThrows(IllegalArgumentException.class, () -> new Transaction(
+            "txn-001", "acc-001", new BigDecimal("487.50"),
+            "   ", LocalDate.of(2026, 3, 1)
+        ));
+    }
+
+    @Test
     void equal_instances_have_equal_hashcodes() {
         Transaction a = new Transaction(
             "txn-001", "acc-001", new BigDecimal("487.50"),

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class TransactionDraftTest {
@@ -48,5 +49,75 @@ class TransactionDraftTest {
         );
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void equals_sameInstance_returnsTrue() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        assertEquals(a, a);
+    }
+
+    @Test
+    void equals_differentType_returnsFalse() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        assertNotEquals(a, "not a draft");
+    }
+
+    @Test
+    void equals_differentId_returnsFalse() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        TransactionDraft b = new TransactionDraft(
+            "txn-synth-999", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void equals_differentAmount_returnsFalse() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        TransactionDraft b = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("999.99"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void equals_differentMerchantName_returnsFalse() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        TransactionDraft b = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Staples", LocalDate.of(2026, 3, 1)
+        );
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    void equals_differentOccurredOn_returnsFalse() {
+        TransactionDraft a = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 3, 1)
+        );
+        TransactionDraft b = new TransactionDraft(
+            "txn-synth-001", new BigDecimal("487.50"),
+            "Office Depot", LocalDate.of(2026, 12, 31)
+        );
+        assertNotEquals(a, b);
     }
 }
