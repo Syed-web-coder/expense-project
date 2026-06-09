@@ -1,7 +1,7 @@
 # expense-project
 This is a expense documentation project
 
-## Day 1
+## Week 1 Day 1
 Added CLAUDE.md conventions, expense tracking domain model (Transaction, ExpenseCategory, Receipt, TransactionKind), MerchantNameClassifier, fixed TransactionDraft to match CLAUDE.md conventions, and JUnit 5 tests with 10 tests passing.
 
 ## Day 2
@@ -15,3 +15,6 @@ Added exception hierarchy (ExpenseClassificationException base, UnrecognizedMerc
 
 ## Day 5
 Added RecurringChargeClassifier (4th strategy, TDD with 4 tests), TransactionTestDataBuilder fluent builder, wired JaCoCo with 70% branch coverage gate, and refactored existing tests to use the builder.
+
+## Week 2 Day 1
+Added `db/` folder with Postgres schema (`expense` schema, 3 tables), transactional seed, verify queries, and ER diagram.

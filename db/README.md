@@ -23,9 +23,8 @@ erDiagram
         NUMERIC amount_threshold
         TEXT mcc_code
     }
-
-    expense_merchant ||--o{ expense_transaction : "has"
-    expense_merchant ||--o{ expense_rule : "has"
+expense_merchant ||--o{ expense_transaction : "one merchant to many transactions"
+expense_merchant ||--o{ expense_rule : "one merchant to many rules"
 ``` 
 ## Schema decisions
 
