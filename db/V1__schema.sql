@@ -1,34 +1,32 @@
--- Pattern reference for Task 2. Adapted to expense-project domain.
--- TEXT ids, NUMERIC money, TIMESTAMPTZ timestamps.
-
 CREATE SCHEMA IF NOT EXISTS expense;
 SET search_path TO expense, public;
 
 CREATE TABLE expense.merchant (
-    id          TEXT PRIMARY KEY,                          -- (1) TEXT ids, not SERIAL
-    name        TEXT NOT NULL,
-    mcc_code    TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()         -- (2) TIMESTAMPTZ, not TIMESTAMP
+    id          TEXT PRIMARY KEY,                           -- TEXT ids: stable across environments, matches Java domain model
+    name        TEXT NOT NULL,                              -- every merchant must have a name
+    mcc_code    TEXT,                                       -- nullable: not every merchant has an MCC code
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()          -- TIMESTAMPTZ: always store timezone-aware timestamps
 );
 
 CREATE TABLE expense.rule (
-    id          TEXT PRIMARY KEY,
-    merchant_id TEXT NOT NULL
-                REFERENCES expense.merchant(id) ON DELETE RESTRICT,  -- (3) FK
-    category    TEXT NOT NULL
-                CHECK (category IN ('FOOD','TRANSPORT','UTILITIES','ENTERTAINMENT','OTHER')),  -- (4) enum-as-CHECK
-    amount_threshold  NUMERIC(12,2) CHECK (amount_threshold >= 0),   -- (5) NUMERIC not FLOAT
-    mcc_code    TEXT,
-    name        TEXT NOT NULL UNIQUE                       -- (6) UNIQUE on natural key
+    id                TEXT PRIMARY KEY,
+    merchant_id       TEXT NOT NULL
+                      REFERENCES expense.merchant(id) ON DELETE RESTRICT,  -- RESTRICT: orphaned rules are a data error, fail loudly
+    category          TEXT NOT NULL
+                      CHECK (category IN ('FOOD','TRANSPORT','UTILITIES','ENTERTAINMENT','OTHER')),  -- enum-as-CHECK: altering a native ENUM requires a migration
+    amount_threshold  NUMERIC(12,2) CHECK (amount_threshold >= 0),          -- NUMERIC not FLOAT: exact decimal arithmetic for money
+    mcc_code          TEXT,
+    name              TEXT NOT NULL UNIQUE                  -- UNIQUE: two rules cannot share the same name
 );
 
 CREATE TABLE expense.transaction (
-    id           TEXT PRIMARY KEY,
-    merchant_id  TEXT NOT NULL
-                 REFERENCES expense.merchant(id) ON DELETE CASCADE,  -- (7) FK + cascade
-    merchant_name TEXT NOT NULL,
-    amount       NUMERIC(12,2) NOT NULL CHECK (amount >= 0),         -- (8) NUMERIC not FLOAT
-    occurred_at  TIMESTAMPTZ NOT NULL,                               -- (9) TIMESTAMPTZ
-    kind         TEXT NOT NULL
-                 CHECK (kind IN ('DEBIT','CREDIT'))                  -- (10) enum-as-CHECK
-);
+    id            TEXT PRIMARY KEY,
+    merchant_id   TEXT NOT NULL
+                  REFERENCES expense.merchant(id) ON DELETE CASCADE,  -- CASCADE: a transaction without a merchant has no meaning
+    merchant_name TEXT NOT NULL,                            -- denormalised for read performance; must never be blank
+    amount        NUMERIC(12,2) NOT NULL
+                  CHECK (amount >= 0),                      -- amount can never be negative; refunds are separate transactions
+    occurred_at   TIMESTAMPTZ NOT NULL,                     -- TIMESTAMPTZ: preserves the timezone the transaction happened in
+    kind          TEXT NOT NULL
+                  CHECK (kind IN ('DEBIT','CREDIT'))        -- enum-as-CHECK: controls the two legal transaction directions
+); 
