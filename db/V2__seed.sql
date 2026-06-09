@@ -9,12 +9,12 @@ INSERT INTO expense.merchant (id, name, mcc_code) VALUES
     ('merch-2026-0004', 'expense.example.internal', '5812'),
     ('merch-2026-0005', 'tenant-a-streaming', '7922');
 
-INSERT INTO expense.rule (id, name, priority, merchant_id, category, amount_threshold, mcc_code) VALUES
-    ('rule-001', 'grocery-rule', 100, 'merch-2026-0001', 'FOOD', 0.00, '5411'),
-    ('rule-002', 'transport-rule', 90, 'merch-2026-0002', 'TRANSPORT', 0.00, '4111'),
-    ('rule-003', 'utilities-rule', 80, 'merch-2026-0003', 'UTILITIES', 0.00, '4911'),
-    ('rule-004', 'entertainment-rule', 70, 'merch-2026-0004', 'ENTERTAINMENT', 0.00, '5812'),
-    ('rule-005', 'streaming-rule', 60, 'merch-2026-0005', 'ENTERTAINMENT', 0.00, '7922');
+INSERT INTO expense.rule (id, name, merchant_id, category, amount_threshold, mcc_code) VALUES
+    ('rule-001', 'grocery-rule', 'merch-2026-0001', 'FOOD', 0.00, '5411'),
+    ('rule-002', 'transport-rule', 'merch-2026-0002', 'TRANSPORT', 0.00, '4111'),
+    ('rule-003', 'utilities-rule', 'merch-2026-0003', 'UTILITIES', 0.00, '4911'),
+    ('rule-004', 'entertainment-rule', 'merch-2026-0004', 'ENTERTAINMENT', 0.00, '5812'),
+    ('rule-005', 'streaming-rule', 'merch-2026-0005', 'ENTERTAINMENT', 0.00, '7922');
 
 INSERT INTO expense.transaction (id, merchant_id, merchant_name, amount, occurred_at, kind) VALUES
     ('txn-2026-0001', 'merch-2026-0001', 'tenant-a-grocery', 45.99, '2026-01-01T10:00:00Z', 'DEBIT'),
