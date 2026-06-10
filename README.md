@@ -18,3 +18,6 @@ Added RecurringChargeClassifier (4th strategy, TDD with 4 tests), TransactionTes
 
 ## Week 2 Day 1
 Added `db/` folder with Postgres schema (`expense` schema, 3 tables), transactional seed, verify queries, and ER diagram.
+
+## Week 2 Day 2
+Added `db/queries/` folder with four advanced SQL query files (JOINs, CTE, window function, GROUP BY + HAVING), a query catalogue README, and the first Testcontainers integration test (`MerchantQueryIT`) that spins up a real Postgres container to run the queries.
