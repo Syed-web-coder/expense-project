@@ -5,11 +5,13 @@ import com.uptimecrew.expense.model.TransactionKind;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 /**
  * Service that classifies transactions using an injected strategy.
  * The strategy is provided at construction time and never constructed internally.
  */
+@Service
 public final class ExpenseClassificationService {
 
     private static final Logger LOG =

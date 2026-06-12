@@ -6,7 +6,9 @@ import com.uptimecrew.expense.model.TransactionKind;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.springframework.stereotype.Component;
 
+@Component
 public final class ParseFailureClassifier implements TransactionClassifier {
 
     @Override
