@@ -4,10 +4,14 @@ import com.uptimecrew.expense.model.Transaction;
 import com.uptimecrew.expense.model.TransactionKind;
 import java.util.Objects;
 import java.util.logging.Logger;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
 
 /**
  * Classifies transactions based on the merchant name.
  */
+@Primary
+@Component
 public final class MerchantNameClassifier implements TransactionClassifier {
 
     private static final Logger LOG =

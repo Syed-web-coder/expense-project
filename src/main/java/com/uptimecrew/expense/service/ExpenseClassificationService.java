@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Service that classifies transactions using an injected strategy.
  * The strategy is provided at construction time and never constructed internally.
  */
+@Service
 public final class ExpenseClassificationService {
 
     private static final Logger LOG =
