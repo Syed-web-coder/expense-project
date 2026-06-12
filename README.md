@@ -21,3 +21,6 @@ Added `db/` folder with Postgres schema (`expense` schema, 3 tables), transactio
 
 ## Week 2 Day 2
 Added `db/queries/` folder with four advanced SQL query files (JOINs, CTE, window function, GROUP BY + HAVING), a query catalogue README, and the first Testcontainers integration test (`MerchantQueryIT`) that spins up a real Postgres container to run the queries.
+
+## Week 2 Day 3
+Added Spring Boot + Gradle plugins (v3.4.5), Application.java entry point with @SpringBootApplication, promoted ExpenseClassificationService to a Spring @Service, annotated strategy implementations with @Component (@Primary on MerchantNameClassifier), created application.yml with local/test profiles, Actuator health+info endpoints, and logging config, and added ApplicationContextLoadIT with @SpringBootTest verifying the context loads and the service bean is wired.
