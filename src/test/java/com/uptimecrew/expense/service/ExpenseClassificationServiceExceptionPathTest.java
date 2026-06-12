@@ -7,9 +7,11 @@ import ch.qos.logback.core.read.ListAppender;
 import com.uptimecrew.expense.exception.TransactionParseException;
 import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
 import com.uptimecrew.expense.model.Transaction;
+import com.uptimecrew.expense.repository.MerchantRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
@@ -27,10 +29,12 @@ class ExpenseClassificationServiceExceptionPathTest {
 
     private Transaction tx;
     private ListAppender<ILoggingEvent> appender;
+    private MerchantRepository repo;
 
     @BeforeEach
     void setUp() {
         tx = new Transaction(UUID.randomUUID().toString(), "acc_1", AMOUNT, "Unknown Corp", DATE);
+        repo = Mockito.mock(MerchantRepository.class);
 
         Logger logger = (Logger) LoggerFactory.getLogger(ExpenseClassificationService.class);
         appender = new ListAppender<>();
@@ -49,7 +53,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void typedExceptionThrownWithCorrectMessage() {
         String expected = "unknown merchant: Unknown Corp";
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new UnrecognizedMerchantException(expected); });
+                t -> { throw new UnrecognizedMerchantException(expected); }, repo);
 
         UnrecognizedMerchantException ex = assertThrows(
                 UnrecognizedMerchantException.class, () -> service.classify(tx));
@@ -61,7 +65,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void causePreservedInTransactionParseException() {
         IOException ioCause = new IOException("disk error");
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new TransactionParseException("parse failed", ioCause); });
+                t -> { throw new TransactionParseException("parse failed", ioCause); }, repo);
 
         TransactionParseException ex = assertThrows(
                 TransactionParseException.class, () -> service.classify(tx));
@@ -73,7 +77,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void warnLogEmittedOnStrategyFailure() {
         String exceptionMessage = "unknown merchant: Unknown Corp";
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new UnrecognizedMerchantException(exceptionMessage); });
+                t -> { throw new UnrecognizedMerchantException(exceptionMessage); }, repo);
 
         assertThrows(UnrecognizedMerchantException.class, () -> service.classify(tx));
 
