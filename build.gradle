@@ -1,12 +1,14 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id 'org.springframework.boot'        version '3.4.5'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot'          version '3.4.3'
+    id 'io.spring.dependency-management'   version '1.1.7'
 }
 
 group   = 'com.uptimecrew.expense'
 version = '0.1.0-SNAPSHOT'
+
+ext['testcontainers.version'] = '1.21.4'
 
 java {
     toolchain {
@@ -36,7 +38,18 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.postgresql:postgresql:42.7.3'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    implementation     'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation     'org.slf4j:slf4j-api:2.0.13'
+}
+
+compileJava {
+    options.release = 21
+}
+
+compileTestJava {
+    options.release = 21
 }
 
 test {
