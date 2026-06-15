@@ -30,11 +30,13 @@ class ExpenseClassificationServiceExceptionPathTest {
     private Transaction tx;
     private ListAppender<ILoggingEvent> appender;
     private MerchantRepository repo;
+    private com.uptimecrew.expense.readmodel.MerchantReadModelRepository readModelRepo;
 
     @BeforeEach
     void setUp() {
         tx = new Transaction(UUID.randomUUID().toString(), "acc_1", AMOUNT, "Unknown Corp", DATE);
         repo = Mockito.mock(MerchantRepository.class);
+        readModelRepo = Mockito.mock(com.uptimecrew.expense.readmodel.MerchantReadModelRepository.class);
 
         Logger logger = (Logger) LoggerFactory.getLogger(ExpenseClassificationService.class);
         appender = new ListAppender<>();
@@ -53,7 +55,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void typedExceptionThrownWithCorrectMessage() {
         String expected = "unknown merchant: Unknown Corp";
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new UnrecognizedMerchantException(expected); }, repo);
+                t -> { throw new UnrecognizedMerchantException(expected); }, repo, readModelRepo);
 
         UnrecognizedMerchantException ex = assertThrows(
                 UnrecognizedMerchantException.class, () -> service.classify(tx));
@@ -65,7 +67,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void causePreservedInTransactionParseException() {
         IOException ioCause = new IOException("disk error");
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new TransactionParseException("parse failed", ioCause); }, repo);
+                t -> { throw new TransactionParseException("parse failed", ioCause); }, repo, readModelRepo);
 
         TransactionParseException ex = assertThrows(
                 TransactionParseException.class, () -> service.classify(tx));
@@ -77,7 +79,7 @@ class ExpenseClassificationServiceExceptionPathTest {
     void warnLogEmittedOnStrategyFailure() {
         String exceptionMessage = "unknown merchant: Unknown Corp";
         ExpenseClassificationService service = new ExpenseClassificationService(
-                t -> { throw new UnrecognizedMerchantException(exceptionMessage); }, repo);
+                t -> { throw new UnrecognizedMerchantException(exceptionMessage); }, repo, readModelRepo);
 
         assertThrows(UnrecognizedMerchantException.class, () -> service.classify(tx));
 
