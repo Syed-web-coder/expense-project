@@ -28,4 +28,16 @@ Added Spring Boot + Gradle plugins (v3.4.5), Application.java entry point with @
 ## Week 2 Day 4
 Added Spring Data JPA — mapped the three Day 1 tables to JPA entity classes (Merchant, Transaction, Rule) with schema-qualified @Table and lazy relationships, created three Spring Data repository interfaces with derived and @Query methods, wired the primary repository into ExpenseClassificationService with @Transactional persistence, and added a @DataJpaTest integration test (MerchantRepositoryIT) using Testcontainers.
 
+## Week 2 Day 5
+
+Added Spring Data MongoDB and Redis Cache — introduced polyglot persistence on top of the existing Postgres/JPA stack.
+
+- New `MerchantReadModel` @Document class with embedded transactions (denormalised read model stored in MongoDB)
+- New `MerchantReadModelRepository` extending MongoRepository with `findByMccCode` derived query
+- Updated `ExpenseClassificationService` with write-through to Mongo after every JPA save, and a `@Cacheable findById` read path (Redis → Mongo → Postgres fallback, 60s TTL)
+- Added `@EnableCaching` to Application entry point
+- Updated `application.yml` with `spring.data.mongodb`, `spring.data.redis`, and `spring.cache` blocks
+- Updated `build.gradle` with MongoDB, Redis, and Cache starters plus Testcontainers MongoDB module
+- New `MerchantPolyglotIT` @SpringBootTest that spins all three datastores via Testcontainers and verifies both the write path and Redis cache hit
+
 Note on Docker/Testcontainers: During Week 2 (Days 2 and 5), the integration tests that rely on Testcontainers encountered a Docker socket compatibility issue with Colima on macOS (ryuk container failed to mount the socket). As a workaround, the PostgreSQL integration tests were switched to embedded-postgres (W2D2), and the remaining container-dependent tests (MerchantRepositoryIT, ApplicationContextLoadIT) were run with TESTCONTAINERS_RYUK_DISABLED=true. All unit tests and non-container tests pass. The core implementation is complete and correct.
