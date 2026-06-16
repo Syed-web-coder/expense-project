@@ -1,4 +1,9 @@
-spring: 
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/expense
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,3 +32,6 @@ management:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always

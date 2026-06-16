@@ -1,0 +1,6 @@
+spring:
+  cache:
+    type: simple
+  jpa:
+    hibernate:
+      ddl-auto: none
