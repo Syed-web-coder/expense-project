@@ -1,8 +1,10 @@
 spring:
+  cloud:
+    compatibility-verifier:
+      enabled: false
   datasource:
-    url: jdbc:postgresql://localhost:5432/expense
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: nishi
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -31,7 +33,6 @@ cache:
   redis:
     time-to-live: 60000
     cache-null-values: false
-
 management:
   endpoints:
     web:
@@ -40,3 +41,18 @@ management:
   endpoint:
     health:
       show-details: always
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+identity:
+  base-url: http://localhost:8090
+resilience4j:
+  circuitbreaker:
+    instances:
+      identity:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3

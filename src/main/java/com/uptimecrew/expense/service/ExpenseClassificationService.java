@@ -19,10 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ExpenseClassificationService {
-
     private static final Logger LOG = LoggerFactory.getLogger(ExpenseClassificationService.class);
-    public static final String CACHE_NAME = "expense.byId";
-
+    public static final String CACHE_NAME = "expense.byId"; 
     private final TransactionClassifier strategy;
     private final MerchantRepository repository;
     private final MerchantReadModelRepository readModelRepository;
