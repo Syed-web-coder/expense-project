@@ -23,6 +23,8 @@ class ExpenseClassificationServiceMockitoTest {
 
     @Mock
     MerchantRepository repo;
+    @Mock
+    com.uptimecrew.expense.readmodel.MerchantReadModelRepository readModelRepo;
 
     @Test
     void classify_delegatesToStrategy_andReturnsSavedEntity() {
@@ -33,7 +35,7 @@ class ExpenseClassificationServiceMockitoTest {
         when(strategy.classify(any(Transaction.class))).thenReturn(TransactionKind.PURCHASE);
         when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ExpenseClassificationService service = new ExpenseClassificationService(strategy, repo);
+        ExpenseClassificationService service = new ExpenseClassificationService(strategy, repo, readModelRepo);
         MerchantEntity result = service.classify(transaction);
 
         assertEquals("Office Depot", result.getName());
