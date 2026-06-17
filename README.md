@@ -53,3 +53,16 @@ Added Spring Security 7 — secured the W2 D5 read path with JWT authentication,
 - Updated `application.yml` with the `spring.security.oauth2.resourceserver.jwt.issuer-uri` block
 - Updated `build.gradle` with Spring Security, OAuth2 Resource Server, bucket4j-core, and bucket4j-redis starters plus spring-security-test
 - New `MerchantSecurityIT` @SpringBootTest reusing the three Testcontainers, asserting the full 200 / 401 / 403 / 429 matrix with mocked JWTs from spring-security-test
+
+## Week 3 Day 2
+Added REST maturity to the Merchants API — URI versioning, OpenAPI documentation, an idempotent write endpoint, and a resilient call to an external identity microservice.
+- `MerchantController` moved from `/api/merchants` to `/api/v1/merchants` (URI versioning); class-level `@Tag` and per-route `@Operation`/`@ApiResponses` document the 200/401/403/404/409 response matrix
+- New `OpenApiConfig` registering an `OpenAPI` bean with a bearer-JWT `SecurityScheme` so Swagger UI's Authorize button sends the JWT on protected routes
+- Summary route converted from `GET /{id}/summary` to `POST /{id}/summary`, now requiring an `Idempotency-Key` header (UUID); returns 400 if missing or invalid
+- New `IdempotencyService` — a thin wrapper around the W2 D5 Redis instance via `StringRedisTemplate`; computes a `idem:{namespace}:{key}` Redis key, replays the cached response on a duplicate key, returns 409 if a request with that key is already in flight, otherwise runs the work and caches the serialized response with a 24h TTL
+- New `IdentityProfile`, `MerchantIdentityClient` (a `@FeignClient` against `identity.base-url`), and `IdentityService` (wraps the Feign client; only `IdentityService`, not the Feign interface, carries `@CircuitBreaker`, since Feign's proxy doesn't run through the Resilience4j AOP advisor) — the summary route now enriches its response with the caller's `displayName` resolved through this chain
+- `resilience4j.circuitbreaker.instances.identity` configured in `application.yml` (`slidingWindowSize: 10`, `failureRateThreshold: 50`, `waitDurationInOpenState: 10s`, `permittedNumberOfCallsInHalfOpenState: 3`); on repeated failures the breaker opens and short-circuits to a degraded `IdentityProfile` fallback instead of hammering the dependency
+- `SecurityConfig`'s `permitAll()` matcher extended to cover `/v3/api-docs/**` and `/swagger-ui/**` so the API docs render without authentication
+- `Application` annotated with `@EnableFeignClients`
+- Updated `build.gradle` with springdoc-openapi, spring-cloud-starter-openfeign, spring-cloud-starter-circuitbreaker-resilience4j, wiremock-standalone, and the Spring Cloud BOM pinned in `dependencyManagement`
+- New `IdentityClientCircuitBreakerIT` — boots WireMock in-process on port 8090 (no Testcontainers needed) and covers: a 200 Feign call returning the expected profile, the breaker opening after repeated 5xx responses (and subsequent calls short-circuiting without reaching WireMock), the summary endpoint returning 200 with the resolved display name, and the OpenAPI doc exposing the versioned path with the bearer-jwt scheme
