@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service; 
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -16,8 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * The strategy is provided at construction time and never constructed internally.
  */
 @Service
-public final class ExpenseClassificationService {
-
+public class ExpenseClassificationService { 
     private static final Logger LOG =
         LoggerFactory.getLogger(ExpenseClassificationService.class);
 
