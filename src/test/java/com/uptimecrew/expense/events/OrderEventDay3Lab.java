@@ -26,15 +26,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -42,25 +45,20 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Day 3 hands-on lab: wire the full event-driven + MCP test matrix for
- * the expense-project's "place a transaction" write path.
- *
- * No Testcontainers anywhere in this class — Docker/Colima is unreliable
- * in this environment (see README's Docker/Testcontainers note). Instead:
- *   - Postgres: the real local instance (localhost:5432), the same one
- *     used every day for ./gradlew bootRun; reachable without Docker.
- *   - Kafka: EmbeddedKafkaBroker — runs in-process inside the test JVM,
- *     no broker container required.
- *
- * Test 6 (MCP) is added in a later commit.
- */
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @EmbeddedKafka(partitions = 1, topics = { TransactionService.TOPIC, TransactionService.TOPIC + ".dlq" })
 @DirtiesContext
 class OrderEventDay3Lab {
+
+    @Autowired
+    private MockMvc mvc;
 
     @Autowired
     private TransactionService transactionService;
@@ -90,8 +88,6 @@ class OrderEventDay3Lab {
 
     @DynamicPropertySource
     static void kafkaProps(DynamicPropertyRegistry registry) {
-        // EmbeddedKafka starts on a random port; point spring.kafka at it
-        // instead of the application.yml default of localhost:9092.
         registry.add("spring.kafka.bootstrap-servers",
                 () -> System.getProperty("spring.embedded.kafka.brokers"));
     }
@@ -108,26 +104,17 @@ class OrderEventDay3Lab {
 
     @AfterEach
     void cleanUpMerchant() {
-        // Don't rely on cascading through the in-memory `merchant` field —
-        // its `transactions` collection was loaded before recordTransaction()
-        // created new rows elsewhere, so it's stale and confuses Hibernate's
-        // cascade-delete. Delete child rows explicitly, then the merchant.
         transactionRepository.findAll().stream()
                 .filter(t -> merchant.getId().equals(t.getMerchant().getId()))
                 .forEach(transactionRepository::delete);
         merchantRepository.deleteById(merchant.getId());
     }
 
-    // --- Test 1: producerWritesOutboxAndPublishes -------------------------
-    //
-    // Placing a transaction writes ONE outbox row + (once the poller runs)
-    // publishes ONE TransactionPlaced event with the right key and shape.
     @Test
     void producerWritesOutboxAndPublishes() {
         TransactionEntity saved = transactionService.recordTransaction(
                 merchant.getId(), new BigDecimal("42.50"), "DEBIT");
 
-        // 1a. Exactly one outbox row was written for this transaction.
         List<OutboxEvent> outboxRows = outboxRepository.findAll().stream()
                 .filter(e -> e.getAggregateId().equals(saved.getId()))
                 .toList();
@@ -135,8 +122,6 @@ class OrderEventDay3Lab {
         assertThat(outboxRows.get(0).getEventType()).isEqualTo("TransactionPlaced");
         assertThat(outboxRows.get(0).getPayload()).contains(saved.getId());
 
-        // 1b. The OutboxPoller (running on its @Scheduled cadence) ships it
-        // to Kafka with the transaction id as the key, within a few seconds.
         try (Consumer<String, String> consumer = buildTestConsumer()) {
             embeddedKafka.consumeFromAnEmbeddedTopic(consumer, TransactionService.TOPIC);
 
@@ -148,7 +133,6 @@ class OrderEventDay3Lab {
             assertThat(record.value()).contains("\"kind\"").contains("DEBIT");
         }
 
-        // 1c. The outbox row itself is eventually marked published.
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
             OutboxEvent refreshed = outboxRepository.findById(outboxRows.get(0).getId()).orElseThrow();
             assertThat(refreshed.isPublished()).isTrue();
@@ -157,21 +141,38 @@ class OrderEventDay3Lab {
         outboxRepository.deleteAll(outboxRows);
     }
 
-    // --- Test 3: rollbackPreventsPublish -----------------------------------
-    //
-    // If the place-transaction transaction rolls back, NEITHER the
-    // TransactionEntity NOR the OutboxEvent row should exist afterwards.
-    // No outbox row ever existing is the strongest possible guarantee that
-    // nothing will be published — the poller can only ship rows that exist.
+    @Test
+    void consumerIdempotentOnDuplicate() {
+        String idempotencyKey = UUID.randomUUID().toString();
+
+        TransactionEntity first = transactionService.recordTransaction(
+                merchant.getId(), new BigDecimal("20.00"), "DEBIT", idempotencyKey);
+
+        TransactionEntity second = transactionService.recordTransaction(
+                merchant.getId(), new BigDecimal("20.00"), "DEBIT", idempotencyKey);
+
+        assertThat(second.getId()).isEqualTo(first.getId());
+
+        long transactionCount = transactionRepository.findAll().stream()
+                .filter(t -> idempotencyKey.equals(t.getIdempotencyKey()))
+                .count();
+        assertThat(transactionCount).isEqualTo(1);
+
+        long outboxCount = outboxRepository.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(first.getId()))
+                .count();
+        assertThat(outboxCount).isEqualTo(1);
+
+        outboxRepository.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(first.getId()))
+                .forEach(outboxRepository::delete);
+    }
+
     @Test
     void rollbackPreventsPublish() {
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         final String[] transactionId = new String[1];
 
-        // recordTransaction runs in its own @Transactional method, but
-        // TransactionTemplate.execute here forces the OUTER call context
-        // to roll back after the inner writes have happened — simulating
-        // a crash/exception right after the DB commit point.
         assertThatThrownBy(() -> tx.execute((TransactionStatus status) -> {
             TransactionEntity saved = transactionService.recordTransaction(
                     merchant.getId(), new BigDecimal("99.99"), "DEBIT");
@@ -179,14 +180,10 @@ class OrderEventDay3Lab {
             throw new IllegalStateException("forced rollback for test");
         })).isInstanceOf(IllegalStateException.class);
 
-        // Neither row survived the rollback.
         assertThat(transactionRepository.findById(transactionId[0])).isEmpty();
         assertThat(outboxRepository.findAll())
                 .noneMatch(e -> e.getAggregateId().equals(transactionId[0]));
 
-        // Give the poller a beat to prove there's nothing it COULD have
-        // published — there's no outbox row, so no record should ever
-        // appear keyed by this transaction id.
         try (Consumer<String, String> consumer = buildTestConsumer()) {
             embeddedKafka.consumeFromAnEmbeddedTopic(consumer, TransactionService.TOPIC);
             var records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(3));
@@ -200,12 +197,6 @@ class OrderEventDay3Lab {
         }
     }
 
-    // --- Test 4: v1EventReadByV2Consumer -----------------------------------
-    //
-    // Publish (serialise) an event with the v1 schema; deserialise it with
-    // the v2 schema (which adds one optional field, `category`). Backward
-    // compatibility means this must parse cleanly — `category` simply comes
-    // back null, since v1 never had it.
     @Test
     void v1EventReadByV2Consumer() throws Exception {
         TransactionPlacedEvent v1Event = new TransactionPlacedEvent(
@@ -221,7 +212,6 @@ class OrderEventDay3Lab {
 
         String wireFormat = objectMapper.writeValueAsString(v1Event);
 
-        // A v2 consumer reading a v1-shaped event must not throw.
         TransactionPlacedEventV2 v2View =
                 objectMapper.readValue(wireFormat, TransactionPlacedEventV2.class);
 
@@ -229,18 +219,9 @@ class OrderEventDay3Lab {
         assertThat(v2View.merchantId()).isEqualTo(v1Event.merchantId());
         assertThat(v2View.amount()).isEqualTo(v1Event.amount());
         assertThat(v2View.kind()).isEqualTo(v1Event.kind());
-        // The field v1 never had comes back null, not an exception.
         assertThat(v2View.category()).isNull();
     }
 
-    // --- Test 5: malformedEventRoutesToDlq ---------------------------------
-    //
-    // Publish a malformed (non-JSON) event directly to the topic.
-    // TransactionPlacedListener.onMessage() throws JsonProcessingException
-    // trying to parse it; KafkaConfig's DefaultErrorHandler +
-    // DeadLetterPublishingRecoverer classify that as PERMANENT (Topic 8) and
-    // route it to expense.transactions.v1.dlq within 5 seconds, preserving
-    // the original topic in the KafkaHeaders.DLT_ORIGINAL_TOPIC header.
     @Test
     void malformedEventRoutesToDlq() {
         String dlqTopic = TransactionService.TOPIC + ".dlq";
@@ -263,6 +244,56 @@ class OrderEventDay3Lab {
             assertThat(new String(originalTopicHeader.value(), StandardCharsets.UTF_8))
                     .isEqualTo(TransactionService.TOPIC);
         }
+    }
+
+    @Test
+    void probeMcpToolCallResponses() throws Exception {
+        String initBody = "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"probe-client\",\"version\":\"1.0.0\"}}}";
+
+        var initResult = mvc.perform(post("/mcp")
+                        .contentType("application/json")
+                        .accept("application/json", "text/event-stream")
+                        .content(initBody)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_transactions:write"))))
+                .andReturn();
+        System.out.println("=== INIT: status=" + initResult.getResponse().getStatus());
+        System.out.println("=== INIT: body=" + initResult.getResponse().getContentAsString());
+        String sessionId = initResult.getResponse().getHeader("Mcp-Session-Id");
+        System.out.println("=== INIT: Mcp-Session-Id=" + sessionId);
+
+        String validScopeBody = String.format(
+                "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"place_transaction\",\"arguments\":{\"merchantId\":\"%s\",\"amount\":\"10.00\",\"kind\":\"DEBIT\",\"idempotencyKey\":\"%s\"}}}",
+                merchant.getId(), UUID.randomUUID());
+
+        var withScopeResult = mvc.perform(post("/mcp")
+                        .contentType("application/json")
+                        .accept("application/json", "text/event-stream")
+                        .header("Mcp-Session-Id", sessionId)
+                        .content(validScopeBody)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_transactions:write"))))
+                .andReturn();
+        if (withScopeResult.getRequest().isAsyncStarted()) {
+            withScopeResult = mvc.perform(asyncDispatch(withScopeResult)).andReturn();
+        }
+        System.out.println("=== WITH SCOPE: status=" + withScopeResult.getResponse().getStatus());
+        System.out.println("=== WITH SCOPE: body=" + withScopeResult.getResponse().getContentAsString());
+
+        String noScopeBody = String.format(
+                "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"place_transaction\",\"arguments\":{\"merchantId\":\"%s\",\"amount\":\"10.00\",\"kind\":\"DEBIT\",\"idempotencyKey\":\"%s\"}}}",
+                merchant.getId(), UUID.randomUUID());
+
+        var noScopeResult = mvc.perform(post("/mcp")
+                        .contentType("application/json")
+                        .accept("application/json", "text/event-stream")
+                        .header("Mcp-Session-Id", sessionId)
+                        .content(noScopeBody)
+                        .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_something:else"))))
+                .andReturn();
+        if (noScopeResult.getRequest().isAsyncStarted()) {
+            noScopeResult = mvc.perform(asyncDispatch(noScopeResult)).andReturn();
+        }
+        System.out.println("=== NO SCOPE: status=" + noScopeResult.getResponse().getStatus());
+        System.out.println("=== NO SCOPE: body=" + noScopeResult.getResponse().getContentAsString());
     }
 
     private Consumer<String, String> buildTestConsumer() {
