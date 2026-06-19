@@ -60,6 +60,7 @@ dependencies {
     // --- W3D3: Kafka + outbox + DLQ ---
     implementation          'org.springframework.kafka:spring-kafka'
     testImplementation      'org.springframework.kafka:spring-kafka-test'
+    testImplementation      'org.awaitility:awaitility:4.2.2'
 
     // --- W3D3: MCP server (exposes place_transaction etc. as a tool) ---
     implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc'
