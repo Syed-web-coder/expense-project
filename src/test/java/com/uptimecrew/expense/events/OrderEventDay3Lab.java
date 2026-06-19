@@ -10,6 +10,7 @@ import com.uptimecrew.expense.repository.TransactionRepository;
 import com.uptimecrew.expense.service.TransactionService;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.UUID;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,11 +54,11 @@ import static org.awaitility.Awaitility.await;
  *   - Kafka: EmbeddedKafkaBroker — runs in-process inside the test JVM,
  *     no broker container required.
  *
- * Tests 5-6 (DLQ, MCP) are added in later commits.
+ * Test 6 (MCP) is added in a later commit.
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@EmbeddedKafka(partitions = 1, topics = { TransactionService.TOPIC })
+@EmbeddedKafka(partitions = 1, topics = { TransactionService.TOPIC, TransactionService.TOPIC + ".dlq" })
 @DirtiesContext
 class OrderEventDay3Lab {
 
@@ -80,6 +82,9 @@ class OrderEventDay3Lab {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private org.springframework.kafka.core.KafkaTemplate<String, String> kafkaTemplate;
 
     private MerchantEntity merchant;
 
@@ -226,6 +231,38 @@ class OrderEventDay3Lab {
         assertThat(v2View.kind()).isEqualTo(v1Event.kind());
         // The field v1 never had comes back null, not an exception.
         assertThat(v2View.category()).isNull();
+    }
+
+    // --- Test 5: malformedEventRoutesToDlq ---------------------------------
+    //
+    // Publish a malformed (non-JSON) event directly to the topic.
+    // TransactionPlacedListener.onMessage() throws JsonProcessingException
+    // trying to parse it; KafkaConfig's DefaultErrorHandler +
+    // DeadLetterPublishingRecoverer classify that as PERMANENT (Topic 8) and
+    // route it to expense.transactions.v1.dlq within 5 seconds, preserving
+    // the original topic in the KafkaHeaders.DLT_ORIGINAL_TOPIC header.
+    @Test
+    void malformedEventRoutesToDlq() {
+        String dlqTopic = TransactionService.TOPIC + ".dlq";
+        String malformedPayload = "{ this is not valid json !!";
+        String key = "malformed-" + UUID.randomUUID();
+
+        kafkaTemplate.send(TransactionService.TOPIC, key, malformedPayload);
+
+        try (Consumer<String, String> dlqConsumer = buildTestConsumer()) {
+            embeddedKafka.consumeFromAnEmbeddedTopic(dlqConsumer, dlqTopic);
+
+            ConsumerRecord<String, String> dlqRecord = KafkaTestUtils.getSingleRecord(
+                    dlqConsumer, dlqTopic, Duration.ofSeconds(5));
+
+            assertThat(dlqRecord.value()).isEqualTo(malformedPayload);
+
+            Header originalTopicHeader = dlqRecord.headers()
+                    .lastHeader(org.springframework.kafka.support.KafkaHeaders.DLT_ORIGINAL_TOPIC);
+            assertThat(originalTopicHeader).isNotNull();
+            assertThat(new String(originalTopicHeader.value(), StandardCharsets.UTF_8))
+                    .isEqualTo(TransactionService.TOPIC);
+        }
     }
 
     private Consumer<String, String> buildTestConsumer() {
