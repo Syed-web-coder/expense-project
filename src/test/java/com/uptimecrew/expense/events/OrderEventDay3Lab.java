@@ -272,11 +272,14 @@ class OrderEventDay3Lab {
                         .content(validScopeBody)
                         .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_transactions:write"))))
                 .andReturn();
+        System.out.println("=== WITH SCOPE: isAsyncStarted=" + withScopeResult.getRequest().isAsyncStarted());
+        System.out.println("=== WITH SCOPE: contentType=" + withScopeResult.getResponse().getContentType());
         if (withScopeResult.getRequest().isAsyncStarted()) {
             withScopeResult = mvc.perform(asyncDispatch(withScopeResult)).andReturn();
         }
         System.out.println("=== WITH SCOPE: status=" + withScopeResult.getResponse().getStatus());
         System.out.println("=== WITH SCOPE: body=" + withScopeResult.getResponse().getContentAsString());
+        System.out.println("=== WITH SCOPE: rawBytes=" + java.util.Arrays.toString(withScopeResult.getResponse().getContentAsByteArray()));
 
         String noScopeBody = String.format(
                 "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"place_transaction\",\"arguments\":{\"merchantId\":\"%s\",\"amount\":\"10.00\",\"kind\":\"DEBIT\",\"idempotencyKey\":\"%s\"}}}",

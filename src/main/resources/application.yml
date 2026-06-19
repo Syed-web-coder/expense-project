@@ -38,6 +38,12 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://idp.example.internal/realms/uptimecrew
+  ai:
+    mcp:
+      server:
+        name: expense-mcp-server
+        version: 1.0.0
+        protocol: STREAMABLE
 cache:
   type: redis
   redis:

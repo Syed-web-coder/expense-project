@@ -53,6 +53,26 @@ public class TransactionService {
 
     @Transactional
     public TransactionEntity recordTransaction(String merchantId, BigDecimal amount, String kind) {
+        return recordTransaction(merchantId, amount, kind, null);
+    }
+
+    /**
+     * Idempotent variant: if idempotencyKey is non-null and a transaction
+     * was already recorded under that key, returns the ORIGINAL transaction
+     * without writing anything new (no duplicate row, no duplicate event).
+     * This protects against agent/client retries of a slow or ambiguous
+     * call — the MCP place_transaction tool always supplies a key.
+     */
+    @Transactional
+    public TransactionEntity recordTransaction(String merchantId, BigDecimal amount, String kind,
+                                                String idempotencyKey) {
+        if (idempotencyKey != null) {
+            var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
         MerchantEntity merchant = merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new UnrecognizedMerchantException(
                         "No merchant found for id " + merchantId));
@@ -66,7 +86,8 @@ public class TransactionService {
                 merchant.getName(),
                 amount,
                 occurredAt,
-                kind
+                kind,
+                idempotencyKey
         );
         TransactionEntity saved = transactionRepository.save(entity);
 

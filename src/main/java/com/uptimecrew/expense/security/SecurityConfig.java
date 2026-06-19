@@ -34,6 +34,11 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
              .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // /mcp itself is open; @PreAuthorize on individual @Tool methods
+                // enforces per-tool scopes, same as Day 1's resource-server JWT
+                // chain does for /api/**. A request still needs a valid JWT to
+                // get past method security — this just lets the transport in.
+                .requestMatchers("/mcp", "/mcp/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll())
             .oauth2ResourceServer(o -> o.jwt(jwt -> jwt
