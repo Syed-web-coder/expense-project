@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.events;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.entity.OutboxEvent;
 import com.uptimecrew.expense.entity.TransactionEntity;
@@ -51,7 +52,7 @@ import static org.awaitility.Awaitility.await;
  *   - Kafka: EmbeddedKafkaBroker — runs in-process inside the test JVM,
  *     no broker container required.
  *
- * Tests 4-6 (schema evolution, DLQ, MCP) are added in later commits.
+ * Tests 5-6 (DLQ, MCP) are added in later commits.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -76,6 +77,9 @@ class OrderEventDay3Lab {
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private MerchantEntity merchant;
 
@@ -189,6 +193,39 @@ class OrderEventDay3Lab {
             }
             assertThat(anyMatchingKey).isFalse();
         }
+    }
+
+    // --- Test 4: v1EventReadByV2Consumer -----------------------------------
+    //
+    // Publish (serialise) an event with the v1 schema; deserialise it with
+    // the v2 schema (which adds one optional field, `category`). Backward
+    // compatibility means this must parse cleanly — `category` simply comes
+    // back null, since v1 never had it.
+    @Test
+    void v1EventReadByV2Consumer() throws Exception {
+        TransactionPlacedEvent v1Event = new TransactionPlacedEvent(
+                UUID.randomUUID().toString(),
+                Instant.now(),
+                "txn-schema-evo-001",
+                merchant.getId(),
+                merchant.getName(),
+                new BigDecimal("15.00"),
+                Instant.now(),
+                "DEBIT"
+        );
+
+        String wireFormat = objectMapper.writeValueAsString(v1Event);
+
+        // A v2 consumer reading a v1-shaped event must not throw.
+        TransactionPlacedEventV2 v2View =
+                objectMapper.readValue(wireFormat, TransactionPlacedEventV2.class);
+
+        assertThat(v2View.transactionId()).isEqualTo(v1Event.transactionId());
+        assertThat(v2View.merchantId()).isEqualTo(v1Event.merchantId());
+        assertThat(v2View.amount()).isEqualTo(v1Event.amount());
+        assertThat(v2View.kind()).isEqualTo(v1Event.kind());
+        // The field v1 never had comes back null, not an exception.
+        assertThat(v2View.category()).isNull();
     }
 
     private Consumer<String, String> buildTestConsumer() {
