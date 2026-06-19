@@ -19,16 +19,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Owns the "record a transaction" write path.
- *
- * recordTransaction is the producer half of the outbox pattern (Day 3,
- * Topic 6): the TransactionEntity insert and the OutboxEvent insert
- * happen in the SAME @Transactional method, so a crash between "save
- * the transaction" and "publish the event" is impossible — either both
- * rows commit, or neither does. A separate OutboxPoller (not this class)
- * is responsible for actually shipping unpublished rows to Kafka.
- */
 @Service
 public class TransactionService {
 
@@ -56,13 +46,6 @@ public class TransactionService {
         return recordTransaction(merchantId, amount, kind, null);
     }
 
-    /**
-     * Idempotent variant: if idempotencyKey is non-null and a transaction
-     * was already recorded under that key, returns the ORIGINAL transaction
-     * without writing anything new (no duplicate row, no duplicate event).
-     * This protects against agent/client retries of a slow or ambiguous
-     * call — the MCP place_transaction tool always supplies a key.
-     */
     @Transactional
     public TransactionEntity recordTransaction(String merchantId, BigDecimal amount, String kind,
                                                 String idempotencyKey) {
@@ -104,7 +87,7 @@ public class TransactionService {
 
         outboxRepository.save(new OutboxEvent(
                 AGGREGATE_TYPE,
-                saved.getId(),          // aggregate id; also the eventual Kafka key
+                saved.getId(),
                 EVENT_TYPE,
                 writeJson(event)
         ));
@@ -112,12 +95,63 @@ public class TransactionService {
         return saved;
     }
 
+    @Transactional
+    public com.uptimecrew.expense.mcp.TransactionView recordTransactionView(
+            String merchantId, BigDecimal amount, String kind, String idempotencyKey) {
+
+        if (idempotencyKey != null) {
+            var existing = transactionRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) {
+                TransactionEntity e = existing.get();
+                return new com.uptimecrew.expense.mcp.TransactionView(
+                        e.getId(), merchantId, e.getMerchantName(), e.getAmount(), e.getOccurredAt(), e.getKind());
+            }
+        }
+
+        MerchantEntity merchant = merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new UnrecognizedMerchantException(
+                        "No merchant found for id " + merchantId));
+
+        String transactionId = UUID.randomUUID().toString();
+        Instant occurredAt = Instant.now();
+
+        TransactionEntity entity = new TransactionEntity(
+                transactionId,
+                merchant,
+                merchant.getName(),
+                amount,
+                occurredAt,
+                kind,
+                idempotencyKey
+        );
+        TransactionEntity saved = transactionRepository.save(entity);
+
+        TransactionPlacedEvent event = new TransactionPlacedEvent(
+                UUID.randomUUID().toString(),
+                Instant.now(),
+                saved.getId(),
+                merchant.getId(),
+                merchant.getName(),
+                amount,
+                occurredAt,
+                kind
+        );
+
+        outboxRepository.save(new OutboxEvent(
+                AGGREGATE_TYPE,
+                saved.getId(),
+                EVENT_TYPE,
+                writeJson(event)
+        ));
+
+        return new com.uptimecrew.expense.mcp.TransactionView(
+                saved.getId(), merchant.getId(), merchant.getName(), amount, occurredAt, kind);
+    }
+
     private String writeJson(TransactionPlacedEvent event) {
         try {
             return objectMapper.writeValueAsString(event);
         } catch (JsonProcessingException e) {
-            // Serialisation of our own DTO failing means a programming error,
-            // not a recoverable runtime condition — fail loudly.
             throw new IllegalStateException("Failed to serialise " + EVENT_TYPE + " event", e);
         }
     }

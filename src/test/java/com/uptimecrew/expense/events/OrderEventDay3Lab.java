@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.events;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.entity.OutboxEvent;
@@ -125,9 +126,18 @@ class OrderEventDay3Lab {
         try (Consumer<String, String> consumer = buildTestConsumer()) {
             embeddedKafka.consumeFromAnEmbeddedTopic(consumer, TransactionService.TOPIC);
 
-            ConsumerRecord<String, String> record = KafkaTestUtils.getSingleRecord(
-                    consumer, TransactionService.TOPIC, Duration.ofSeconds(10));
+            ConsumerRecord<String, String>[] matchHolder = new ConsumerRecord[1];
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+                var records = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(1));
+                for (ConsumerRecord<String, String> r : records.records(TransactionService.TOPIC)) {
+                    if (saved.getId().equals(r.key())) {
+                        matchHolder[0] = r;
+                    }
+                }
+                assertThat(matchHolder[0]).isNotNull();
+            });
 
+            ConsumerRecord<String, String> record = matchHolder[0];
             assertThat(record.key()).isEqualTo(saved.getId());
             assertThat(record.value()).contains(saved.getId());
             assertThat(record.value()).contains("\"kind\"").contains("DEBIT");
@@ -247,8 +257,8 @@ class OrderEventDay3Lab {
     }
 
     @Test
-    void probeMcpToolCallResponses() throws Exception {
-        String initBody = "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"probe-client\",\"version\":\"1.0.0\"}}}";
+    void mcpPlaceOrderRespectsScope() throws Exception {
+        String initBody = "{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test-client\",\"version\":\"1.0.0\"}}}";
 
         var initResult = mvc.perform(post("/mcp")
                         .contentType("application/json")
@@ -256,14 +266,13 @@ class OrderEventDay3Lab {
                         .content(initBody)
                         .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_transactions:write"))))
                 .andReturn();
-        System.out.println("=== INIT: status=" + initResult.getResponse().getStatus());
-        System.out.println("=== INIT: body=" + initResult.getResponse().getContentAsString());
         String sessionId = initResult.getResponse().getHeader("Mcp-Session-Id");
-        System.out.println("=== INIT: Mcp-Session-Id=" + sessionId);
+        assertThat(sessionId).isNotBlank();
 
+        String validIdempotencyKey = UUID.randomUUID().toString();
         String validScopeBody = String.format(
                 "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"place_transaction\",\"arguments\":{\"merchantId\":\"%s\",\"amount\":\"10.00\",\"kind\":\"DEBIT\",\"idempotencyKey\":\"%s\"}}}",
-                merchant.getId(), UUID.randomUUID());
+                merchant.getId(), validIdempotencyKey);
 
         var withScopeResult = mvc.perform(post("/mcp")
                         .contentType("application/json")
@@ -272,14 +281,18 @@ class OrderEventDay3Lab {
                         .content(validScopeBody)
                         .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_transactions:write"))))
                 .andReturn();
-        System.out.println("=== WITH SCOPE: isAsyncStarted=" + withScopeResult.getRequest().isAsyncStarted());
-        System.out.println("=== WITH SCOPE: contentType=" + withScopeResult.getResponse().getContentType());
         if (withScopeResult.getRequest().isAsyncStarted()) {
             withScopeResult = mvc.perform(asyncDispatch(withScopeResult)).andReturn();
         }
-        System.out.println("=== WITH SCOPE: status=" + withScopeResult.getResponse().getStatus());
-        System.out.println("=== WITH SCOPE: body=" + withScopeResult.getResponse().getContentAsString());
-        System.out.println("=== WITH SCOPE: rawBytes=" + java.util.Arrays.toString(withScopeResult.getResponse().getContentAsByteArray()));
+        assertThat(withScopeResult.getResponse().getStatus()).isEqualTo(200);
+
+        JsonNode withScopeRpc = parseSseDataAsJson(withScopeResult.getResponse().getContentAsString());
+        assertThat(withScopeRpc.path("result").path("isError").asBoolean()).isFalse();
+
+        String withScopeText = withScopeRpc.path("result").path("content").get(0).path("text").asText();
+        JsonNode transactionView = objectMapper.readTree(withScopeText);
+        assertThat(transactionView.path("merchantId").asText()).isEqualTo(merchant.getId());
+        assertThat(transactionView.path("kind").asText()).isEqualTo("DEBIT");
 
         String noScopeBody = String.format(
                 "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"place_transaction\",\"arguments\":{\"merchantId\":\"%s\",\"amount\":\"10.00\",\"kind\":\"DEBIT\",\"idempotencyKey\":\"%s\"}}}",
@@ -295,8 +308,27 @@ class OrderEventDay3Lab {
         if (noScopeResult.getRequest().isAsyncStarted()) {
             noScopeResult = mvc.perform(asyncDispatch(noScopeResult)).andReturn();
         }
-        System.out.println("=== NO SCOPE: status=" + noScopeResult.getResponse().getStatus());
-        System.out.println("=== NO SCOPE: body=" + noScopeResult.getResponse().getContentAsString());
+        assertThat(noScopeResult.getResponse().getStatus()).isEqualTo(200);
+
+        JsonNode noScopeRpc = parseSseDataAsJson(noScopeResult.getResponse().getContentAsString());
+        assertThat(noScopeRpc.path("result").path("isError").asBoolean()).isTrue();
+
+        String noScopeText = noScopeRpc.path("result").path("content").get(0).path("text").asText();
+        assertThat(noScopeText).containsIgnoringCase("denied");
+
+        transactionRepository.findById(transactionView.path("id").asText())
+                .ifPresent(transactionRepository::delete);
+        outboxRepository.findAll().stream()
+                .filter(e -> e.getAggregateId().equals(transactionView.path("id").asText()))
+                .forEach(outboxRepository::delete);
+    }
+
+    private JsonNode parseSseDataAsJson(String sseBody) throws Exception {
+        String dataLine = sseBody.lines()
+                .filter(line -> line.startsWith("data:"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No SSE data line found in: " + sseBody));
+        return objectMapper.readTree(dataLine.substring("data:".length()));
     }
 
     private Consumer<String, String> buildTestConsumer() {

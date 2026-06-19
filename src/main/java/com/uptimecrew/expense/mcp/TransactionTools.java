@@ -1,6 +1,5 @@
 package com.uptimecrew.expense.mcp;
 
-import com.uptimecrew.expense.entity.TransactionEntity;
 import com.uptimecrew.expense.service.TransactionService;
 
 import java.math.BigDecimal;
@@ -10,19 +9,6 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 
-/**
- * Exposes the expense-project's "record a transaction" write path as an
- * MCP tool, so Claude Code (or any MCP client) can place a transaction
- * directly rather than going through the REST API.
- *
- * Mirrors the curriculum's place_order example (Topic 10):
- *   - @PreAuthorize reuses Day 1's JWT/method-security infrastructure;
- *     MCP is transport, not policy — the same scope check a REST call
- *     would need still applies here.
- *   - idempotencyKey ties this tool back to Day 2's idempotency-key
- *     contract: an agent that retries a slow/ambiguous call gets the
- *     original result back, not a duplicate transaction.
- */
 @Component
 public class TransactionTools {
 
@@ -43,7 +29,7 @@ public class TransactionTools {
             """
     )
     @PreAuthorize("hasAuthority('SCOPE_transactions:write')")
-    public TransactionEntity placeTransaction(
+    public TransactionView placeTransaction(
             @ToolParam(description = "Merchant id this transaction is charged against.")
             String merchantId,
 
@@ -56,6 +42,6 @@ public class TransactionTools {
             @ToolParam(description = "Idempotency key (UUID); replaying the same key returns the prior result.")
             String idempotencyKey
     ) {
-        return transactionService.recordTransaction(merchantId, amount, kind, idempotencyKey);
+        return transactionService.recordTransactionView(merchantId, amount, kind, idempotencyKey);
     }
 }
