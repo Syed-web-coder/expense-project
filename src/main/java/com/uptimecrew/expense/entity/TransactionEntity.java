@@ -36,16 +36,25 @@ public class TransactionEntity {
     @Column(name = "kind", nullable = false)
     private String kind;
 
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
     protected TransactionEntity() {}
 
     public TransactionEntity(String id, MerchantEntity merchant, String merchantName,
                              BigDecimal amount, Instant occurredAt, String kind) {
+        this(id, merchant, merchantName, amount, occurredAt, kind, null);
+    }
+
+    public TransactionEntity(String id, MerchantEntity merchant, String merchantName,
+                             BigDecimal amount, Instant occurredAt, String kind, String idempotencyKey) {
         this.id = id;
         this.merchant = merchant;
         this.merchantName = merchantName;
         this.amount = amount;
         this.occurredAt = occurredAt;
         this.kind = kind;
+        this.idempotencyKey = idempotencyKey;
     }
 
     public String getId() { return id; }
@@ -54,6 +63,7 @@ public class TransactionEntity {
     public BigDecimal getAmount() { return amount; }
     public Instant getOccurredAt() { return occurredAt; }
     public String getKind() { return kind; }
+    public String getIdempotencyKey() { return idempotencyKey; }
 
     @Override
     public boolean equals(Object o) {
