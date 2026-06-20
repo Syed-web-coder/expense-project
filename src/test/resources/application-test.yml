@@ -4,3 +4,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  ai:
+    mcp:
+      server:
+        enabled: false

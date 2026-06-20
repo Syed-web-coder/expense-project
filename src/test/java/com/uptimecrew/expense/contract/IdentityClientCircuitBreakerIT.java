@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.contract;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -25,9 +26,15 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.security.core.authority.SimpleGrantedAuthority; 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 // Pattern reference for Task 4 (WireMock + OpenAPI assertion).
 //
@@ -37,7 +44,18 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Testcontainers
 class IdentityClientCircuitBreakerIT {
+
+    @Container @ServiceConnection
+    static final PostgreSQLContainer<?> PG = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @Container @ServiceConnection
+    static final MongoDBContainer MONGO = new MongoDBContainer("mongo:7");
+
+    @Container @ServiceConnection(name = "redis")
+    static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine")
+            .withExposedPorts(6379);
 
     @RegisterExtension
     static final WireMockExtension WM = WireMockExtension.newInstance()
@@ -47,11 +65,22 @@ class IdentityClientCircuitBreakerIT {
     @Autowired IdentityService identityService;
     @Autowired CircuitBreakerRegistry circuitBreakerRegistry;
     @Autowired MockMvc mvc;
-    
+
+    @BeforeAll
+    static void applySchema() throws Exception {
+        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+                PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+             java.sql.Statement stmt = conn.createStatement()) {
+            stmt.execute(java.nio.file.Files.readString(java.nio.file.Path.of("db/V1__schema.sql")));
+            stmt.execute(java.nio.file.Files.readString(java.nio.file.Path.of("db/V3__outbox.sql")));
+            stmt.execute(java.nio.file.Files.readString(java.nio.file.Path.of("db/V4__transaction_idempotency_key.sql")));
+        }
+    }
+
     @BeforeEach
-void resetBreaker() {
-    circuitBreakerRegistry.circuitBreaker("identity").reset();
-}
+    void resetBreaker() {
+        circuitBreakerRegistry.circuitBreaker("identity").reset();
+    }
     @Test 
     void getProfile_returnsBody_whenIdentityIs200() {
         WM.stubFor(get(urlEqualTo("/identity/u-1/profile"))
