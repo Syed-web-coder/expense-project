@@ -2,8 +2,10 @@ package com.uptimecrew.expense;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.UUID;
 
 import java.time.Instant;
 import java.util.List;
@@ -60,7 +62,7 @@ class MerchantSecurityIT {
 
     @Test
     void getById_returns200_whenAuthenticatedWithScopeAndRole() throws Exception {
-        mvc.perform(get("/api/merchants/test-id")
+        mvc.perform(get("/api/v1/merchants/test-id")
                 .with(jwt().authorities(
                     new SimpleGrantedAuthority("SCOPE_merchants.read"),
                     new SimpleGrantedAuthority("ROLE_MERCHANT_READER"))))
@@ -75,7 +77,7 @@ class MerchantSecurityIT {
 
     @Test
     void getById_returns403_whenJwtMissingRole() throws Exception {
-        mvc.perform(get("/api/merchants/test-id")
+        mvc.perform(get("/api/v1/merchants/test-id")
                 .with(jwt().authorities(
                     new SimpleGrantedAuthority("SCOPE_merchants.read"))))
            .andExpect(status().isForbidden());
@@ -84,7 +86,8 @@ class MerchantSecurityIT {
     @Test
     void summary_returns429_after10Calls() throws Exception {
         for (int i = 0; i < 10; i++) {
-            mvc.perform(get("/api/merchants/test-id/summary")
+            mvc.perform(post("/api/v1/merchants/test-id/summary")
+                    .header("Idempotency-Key", UUID.randomUUID().toString())
                     .with(jwt()
                         .jwt(j -> j.subject("rate-limit-user"))
                         .authorities(
@@ -92,7 +95,8 @@ class MerchantSecurityIT {
                             new SimpleGrantedAuthority("ROLE_MERCHANT_READER"))))
                .andExpect(status().isOk());
         }
-        mvc.perform(get("/api/merchants/test-id/summary")
+        mvc.perform(post("/api/v1/merchants/test-id/summary")
+                .header("Idempotency-Key", UUID.randomUUID().toString())
                 .with(jwt()
                     .jwt(j -> j.subject("rate-limit-user"))
                     .authorities(

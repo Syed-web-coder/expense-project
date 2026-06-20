@@ -38,12 +38,26 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://idp.example.internal/realms/uptimecrew
+  graphql:
+    path: /graphql
+    graphiql:
+      enabled: true
+      path: /graphiql
+    schema:
+      printer:
+        enabled: true
   ai:
     mcp:
       server:
         name: expense-mcp-server
         version: 1.0.0
         protocol: STREAMABLE
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:dummy}
+      chat:
+        options:
+          model: claude-sonnet-4-5
+          max-tokens: 1024
 cache:
   type: redis
   redis:

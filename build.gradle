@@ -13,12 +13,13 @@ ext['spring-ai.version']      = '1.1.2'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
 }
 
 dependencies {
@@ -47,6 +48,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     testImplementation 'org.testcontainers:mongodb'
+    testImplementation 'org.testcontainers:kafka'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'com.bucket4j:bucket4j-core:8.10.1'
@@ -64,6 +66,13 @@ dependencies {
 
     // --- W3D3: MCP server (exposes place_transaction etc. as a tool) ---
     implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc'
+
+    implementation 'org.springframework.boot:spring-boot-starter-graphql'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'com.networknt:json-schema-validator:1.5.1'
+
+    testImplementation 'org.springframework.graphql:spring-graphql-test'
 }
 dependencyManagement {
     imports {

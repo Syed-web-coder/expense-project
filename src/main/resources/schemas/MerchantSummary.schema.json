@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MerchantSummary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mccCode", "totalSpend", "transactionCount", "primaryCategory", "confidence"],
+  "properties": {
+    "mccCode":          { "type": "string", "minLength": 1 },
+    "totalSpend":       { "type": "number", "minimum": 0 },
+    "transactionCount": { "type": "integer", "minimum": 0 },
+    "primaryCategory":  { "type": "string", "minLength": 1 },
+    "confidence":       { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] }
+  }
+}

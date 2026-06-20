@@ -39,6 +39,8 @@ public class SecurityConfig {
                 // chain does for /api/**. A request still needs a valid JWT to
                 // get past method security — this just lets the transport in.
                 .requestMatchers("/mcp", "/mcp/**").permitAll()
+                // GraphQL transport is open; field-level authorization via @PreAuthorize
+                .requestMatchers("/graphql", "/graphql/**", "/graphiql", "/graphiql/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll())
             .oauth2ResourceServer(o -> o.jwt(jwt -> jwt
