@@ -25,6 +25,13 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+// Task 3 (W3 D5): wraps the LLM call in a manual io.opentelemetry.api.trace.Span
+// named "llm.summarize" so the LLM segment is visible in Jaeger as a child of
+// whatever resolver/controller span is current, carrying llm.model /
+// llm.tokens.in / llm.tokens.out attributes read off
+// ChatResponse.getMetadata().getUsage(). Switched from .entity(MerchantSummary.class)
+// to .chatResponse() + manual JSON parsing because .entity(...) doesn't expose
+// token usage and we don't want to make two separate LLM calls.
 @Service
 public class LlmSummaryService {
 
@@ -77,14 +84,21 @@ public class LlmSummaryService {
                 .startSpan();
         try (Scope ignored = span.makeCurrent()) {
             ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
-            MerchantSummary result = mapper.readValue(
-                    response.getResult().getOutput().getText(),
-                    MerchantSummary.class);
+
+            String content = response.getResult().getOutput().getText();
+            MerchantSummary parsed = content == null
+                    ? null
+                    : mapper.readValue(content, MerchantSummary.class);
 
             long promptTokens = safeLong(response.getMetadata().getUsage().getPromptTokens());
             long completionTokens = safeLong(response.getMetadata().getUsage().getCompletionTokens());
             span.setAttribute(ATTR_TOKENS_IN, promptTokens);
             span.setAttribute(ATTR_TOKENS_OUT, completionTokens);
+
+            MerchantSummary result = parsed == null ? null : new MerchantSummary(
+                    parsed.mccCode(), parsed.totalSpend(), parsed.transactionCount(),
+                    parsed.primaryCategory(), parsed.confidence(),
+                    (int) promptTokens, (int) completionTokens);
 
             validate(result);
             span.setStatus(StatusCode.OK);
@@ -109,18 +123,12 @@ public class LlmSummaryService {
     }
 
     private void validate(MerchantSummary candidate) {
-        try {
-            JsonNode node = mapper.valueToTree(candidate);
-            Set<ValidationMessage> errors = schema.validate(node);
-            if (!errors.isEmpty()) {
-                LOG.warn("structured-output schema violation errors={}", errors);
-                throw new IllegalStateException(
-                        "LLM output failed JSON Schema validation: " + errors);
-            }
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new IllegalStateException("JSON Schema validation threw", ex);
+        JsonNode node = mapper.valueToTree(candidate);
+        Set<ValidationMessage> errors = schema.validate(node);
+        if (!errors.isEmpty()) {
+            LOG.warn("structured-output schema violation errors={}", errors);
+            throw new IllegalStateException(
+                    "LLM output failed JSON Schema validation: " + errors);
         }
     }
 }

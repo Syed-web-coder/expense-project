@@ -7,6 +7,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.stereotype.Component;
 
+// Pattern reference for Task 2 verification.
+//
+// A tiny ProducerListener that logs the traceparent header on every send so
+// engineers can eyeball trace-context propagation in the bootRun log without
+// having to open Jaeger. The opentelemetry-spring-kafka-2.7 instrumentation
+// installs a ProducerInterceptor under the hood that injects the W3C
+// traceparent header before this ProducerListener fires — so if the header is
+// missing here, the instrumentation is not on the classpath or
+// otel.instrumentation.spring-kafka.enabled is false.
 @Component
 public class TraceparentLoggingProducerListener implements ProducerListener<Object, Object> {
 

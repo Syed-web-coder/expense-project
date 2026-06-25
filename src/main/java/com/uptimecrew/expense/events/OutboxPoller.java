@@ -3,10 +3,12 @@ package com.uptimecrew.expense.events;
 import com.uptimecrew.expense.entity.OutboxEvent;
 import com.uptimecrew.expense.repository.OutboxRepository;
 import com.uptimecrew.expense.service.TransactionService;
-
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.context.Context;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
-
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -51,9 +53,16 @@ public class OutboxPoller {
         String topic = topicFor(event.getEventType());
         String key   = event.getAggregateId();
         try {
+            ProducerRecord<String, String> record =
+                    new ProducerRecord<>(topic, key, event.getPayload());
+            // Inject the current W3C trace context so the Kafka consumer can
+            // start its span as a child of this one rather than a new root.
+            GlobalOpenTelemetry.getPropagators().getTextMapPropagator()
+                    .inject(Context.current(), record.headers(),
+                            (h, name, value) -> h.add(name, value.getBytes(StandardCharsets.UTF_8)));
             // Synchronous wait for the broker ack: on a Kafka outage this
             // loop pauses safely rather than marking unsent events published.
-            kafkaTemplate.send(topic, key, event.getPayload()).get();
+            kafkaTemplate.send(record).get();
             event.markPublished();
             outboxRepository.save(event);
         } catch (InterruptedException e) {
