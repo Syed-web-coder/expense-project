@@ -4,6 +4,10 @@ import com.uptimecrew.expense.clients.IdentityProfile;
 import com.uptimecrew.expense.clients.IdentityService;
 import com.uptimecrew.expense.readmodel.MerchantReadModel;
 import com.uptimecrew.expense.service.ExpenseClassificationService;
+import com.uptimecrew.expense.service.TransactionService;
+import com.uptimecrew.expense.mcp.TransactionView;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.RequestBody;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -40,13 +44,34 @@ public class MerchantController {
     private final ExpenseClassificationService service;
     private final IdentityService identityService;
     private final IdempotencyService idempotency;
+    private final TransactionService transactionService;
 
     public MerchantController(ExpenseClassificationService service,
                                IdentityService identityService,
-                               IdempotencyService idempotency) {
+                               IdempotencyService idempotency,
+                               TransactionService transactionService) {
         this.service = service;
         this.identityService = identityService;
         this.idempotency = idempotency;
+        this.transactionService = transactionService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('SCOPE_transactions:write')")
+    @Operation(summary = "Record a transaction for a merchant",
+            description = "Writes the transaction and its outbox event in one DB transaction; the outbox poller ships it to Kafka.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Transaction recorded"),
+        @ApiResponse(responseCode = "401", description = "Missing or invalid JWT"),
+        @ApiResponse(responseCode = "403", description = "JWT present but lacks required scope"),
+        @ApiResponse(responseCode = "404", description = "No merchant with that id")
+    })
+    public ResponseEntity<TransactionView> create(@RequestBody CreateTransactionRequest request,
+                                                    @AuthenticationPrincipal Jwt jwt) {
+        LOG.info("create transaction merchantId={} subject={}", request.merchantId(), jwt.getSubject());
+        TransactionView view = transactionService.recordTransactionView(
+                request.merchantId(), request.amount(), request.kind(), null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(view);
     }
 
     @GetMapping("/{id}")
