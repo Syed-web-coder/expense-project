@@ -25,6 +25,8 @@ type MerchantSummary {
     transactionCount: Int!
     primaryCategory: String!
     confidence: Confidence!
+    tokensIn: Int!
+    tokensOut: Int!
 }
 
 enum Confidence { HIGH, MEDIUM, LOW }

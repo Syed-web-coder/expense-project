@@ -123,11 +123,14 @@ class MerchantGraphQlIT {
 
     @Test
     void summarize_returnsStructured_andValidatesSchema() throws Exception {
-        MerchantSummary payload = graphQlTester
+        var response = graphQlTester
                 .document("mutation($id: ID!) { summarizeMerchant(id: $id) { "
-                        + "mccCode totalSpend transactionCount primaryCategory confidence } }")
+                        + "mccCode totalSpend transactionCount primaryCategory confidence "
+                        + "tokensIn tokensOut } }")
                 .variable("id", "seeded-id-1")
-                .execute()
+                .execute();
+
+        MerchantSummary payload = response
                 .path("summarizeMerchant").entity(MerchantSummary.class).get();
 
         assertThat(payload).isNotNull();
@@ -139,6 +142,10 @@ class MerchantGraphQlIT {
             Set<ValidationMessage> errors = schema.validate(node);
             assertThat(errors).isEmpty();
         }
+
+        // StubChatClientFactory.buildChatResponse uses DefaultUsage(17, 42).
+        response.path("summarizeMerchant.tokensIn").entity(Integer.class).isEqualTo(17);
+        response.path("summarizeMerchant.tokensOut").entity(Integer.class).isEqualTo(42);
     }
 
     @Test

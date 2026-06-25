@@ -86,3 +86,17 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
+otel:
+  service:
+    name: expense-service
+  exporter:
+    otlp:
+      endpoint: http://localhost:4318
+      protocol: http/protobuf
+  traces:
+    sampler: always_on
+  instrumentation:
+    spring-kafka:
+      enabled: true
+    kafka:
+      enabled: true
