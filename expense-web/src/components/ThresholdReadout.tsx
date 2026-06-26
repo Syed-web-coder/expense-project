@@ -1,7 +1,6 @@
-type Props = {
-  readonly value: number;
-};
+import { useMerchantFilterStore } from '../stores/useMerchantFilterStore';
 
-export function ThresholdReadout({ value }: Props) {
-  return <div role="status">Threshold: {value}%</div>;
+export function ThresholdReadout() {
+  const threshold = useMerchantFilterStore((s) => s.threshold);
+  return <div role="status">Threshold: {threshold}%</div>;
 }

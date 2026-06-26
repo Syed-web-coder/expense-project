@@ -1,9 +1,8 @@
-type Props = {
-  readonly value: number;
-  readonly onChange: (next: number) => void;
-};
+import { useMerchantFilterStore } from '../stores/useMerchantFilterStore';
 
-export function ThresholdSlider({ value, onChange }: Props) {
+export function ThresholdSlider() {
+  const threshold = useMerchantFilterStore((s) => s.threshold);
+  const setThreshold = useMerchantFilterStore((s) => s.setThreshold);
   return (
     <label>
       Threshold
@@ -11,8 +10,8 @@ export function ThresholdSlider({ value, onChange }: Props) {
         type="range"
         min={0}
         max={100}
-        value={value}
-        onChange={(e) => onChange(Number(e.currentTarget.value))}
+        value={threshold}
+        onChange={(e) => setThreshold(Number(e.currentTarget.value))}
       />
     </label>
   );
