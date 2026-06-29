@@ -7,6 +7,7 @@ import { ProtectedLayout } from './ProtectedLayout';
 import { MerchantListPage    } from './pages/MerchantListPage';
 import { MerchantDetailPage  } from './pages/MerchantDetailPage';
 import { MerchantSummaryPage } from './pages/MerchantSummaryPage';
+import { MerchantChatPanel    } from './pages/MerchantChatPanel';
 import { LoginPage             } from './pages/LoginPage';
 
 export const router = createBrowserRouter([
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
       { path: '/merchants',                  element: <MerchantListPage    /> },
       { path: '/merchants/:id',              element: <MerchantDetailPage  /> },
       { path: '/merchants/:id/summary',      element: <MerchantSummaryPage /> },
+      { path: '/merchants/:id/chat',         element: <MerchantChatPanel   /> },
       { path: '/',  element: <Navigate to="/merchants" replace /> },
     ],
   },
