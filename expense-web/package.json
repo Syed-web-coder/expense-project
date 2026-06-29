@@ -30,11 +30,6 @@
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
-  "pnpm": {
-    "allowBuilds": {
-      "msw": false
-    }
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@graphql-codegen/cli": "^7.1.3",
