@@ -2,14 +2,22 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useParams } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
+import { useMerchantChatStore } from '../stores/useMerchantChatStore';
+import { ToolCallCard } from './ToolCallCard';
 
 export function MerchantChatPanel(): React.ReactElement {
   const { id = '' } = useParams<{ id: string }>();
   const [input, setInput] = useState('');
+  const persistMessage = useMerchantChatStore((s) => s.appendAssistantMessage);
 
   const { messages, sendMessage, status, error, stop, regenerate } = useChat({
     id: `merchant-${id}`,
     transport: new DefaultChatTransport({ api: '/api/chat' }),
+    onFinish: ({ message }) => {
+      // CRITICAL: only persist on completion. Writing partial tokens
+      // to Zustand mid-stream breaks the persist middleware's rehydration.
+      persistMessage(message);
+    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -32,9 +40,28 @@ export function MerchantChatPanel(): React.ReactElement {
         {messages.map((m) => (
           <li key={m.id} data-role={m.role}>
             <strong>{m.role}:</strong>{' '}
-            {m.parts.map((part, i) =>
-              part.type === 'text' ? <span key={i}>{part.text}</span> : null,
-            )}
+            {m.parts.map((part, i) => {
+              if (part.type === 'text') {
+                return <span key={i}>{part.text}</span>;
+              }
+              if (part.type.startsWith('tool-')) {
+                const toolPart = part as unknown as {
+                  state: string;
+                  input: unknown;
+                  output?: unknown;
+                };
+                return (
+                  <ToolCallCard
+                    key={i}
+                    toolName={part.type.slice(5)}
+                    toolState={toolPart.state}
+                    input={toolPart.input}
+                    output={toolPart.output}
+                  />
+                );
+              }
+              return null;
+            })}
           </li>
         ))}
       </ul>
