@@ -134,3 +134,18 @@ Stood up the frontend half of the capstone — a new `expense-web/` directory, p
 ## Week 4 Day 2
 
 Refactored expense-web's MerchantDetailPage state into a useReducer-driven discriminated-union state machine (idle/loading/success/error/empty) with a pure, exhaustively-checked reducer; hoisted cross-cutting filter state (MCC chips, date range, search text, archived toggle, threshold) into a Zustand store with devtools + persist middleware, partialize scoped to threshold only; added a debounced search hook with useEffect cleanup; wrapped the page in a class-based ErrorBoundary with a retry fallback; and added 11 new Vitest tests across the reducer, store, and debounce hook, on top of fixing a Node v26/jsdom localStorage conflict in the test environment and a previously-nonfunctional hash-routing stub in App.tsx.
+
+## Week 4 Day 3
+
+Added Apollo Client, TanStack Query v5, React Router v7, and MSW to the `expense-web` frontend, wired against the live Spring Boot GraphQL/REST backend.
+
+- `src/apollo/client.ts` — Apollo Client pinned to v3 (not the newly-released v4, which has breaking React-hook import changes) with a `setContext` auth link that only attaches a JWT when one matches a real three-segment token shape, avoiding spurious 401s on `/graphql` from the dev-stub token
+- `codegen.ts` — GraphQL Codegen client-preset scanning `.tsx` files directly for co-located `graphql()` documents (switched from a separate `.graphql`-file glob after the reference queries didn't match the project's actual schema)
+- `src/queries/LatestMerchants.graphql` and `SummarizeMerchant.graphql` were created, then deleted once Codegen moved to co-located documents
+- `src/pages/MerchantListPage.tsx` and `MerchantSummaryPage.tsx` — Apollo `useQuery`/`useMutation` pages adapted to the real `Merchant`/`MerchantSummary` schema fields (`mccCode`/`capturedAt`/`lines`, not the reference assignment's `name`/`updatedAt`/`summaryText`)
+- `src/queryClient.ts` and `src/hooks/useGetExpenseTrackingRest.ts` — TanStack Query v5 client and REST hook
+- `src/router.tsx` + `src/ProtectedLayout.tsx` — `createBrowserRouter` with a JWT-gated parent route, split into its own file to satisfy the `react-refresh/only-export-components` lint rule
+- `src/test/handlers.ts`, `server.ts` — MSW request mocks for the GraphQL query/mutation and REST endpoint
+- Four new Vitest files (list page, summary page with optimistic-response assertion, protected-layout redirect/render, REST hook) bringing the suite to 8 files / 20 tests
+- Backend: added `CorsConfig.java` to permit the Vite dev origins, and disabled `spring.ai.mcp.server` in `application.yml` (a `NoClassDefFoundError` in that auto-configuration was crashing the whole app context on every `bootRun`)
+- No standing local dev environment existed for the W2 D5 datastores — stood up Postgres/Mongo/Redis manually via `docker run` (no compose file in the repo), applied the `db/` migrations, and seeded MongoDB's `merchants` read-model collection directly, since the Postgres rows inserted via `psql` never passed through the application's write-through path

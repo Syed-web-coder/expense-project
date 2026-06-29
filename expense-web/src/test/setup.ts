@@ -1,3 +1,4 @@
+import './server';
 import '@testing-library/jest-dom';
 
 // Node 20.11+/22+/24+/26+ ships an experimental built-in `localStorage`

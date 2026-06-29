@@ -49,6 +49,7 @@ spring:
   ai:
     mcp:
       server:
+        enabled: false
         name: expense-mcp-server
         version: 1.0.0
         protocol: STREAMABLE
