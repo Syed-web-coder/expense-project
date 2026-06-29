@@ -31,7 +31,7 @@ export function MerchantChatPanel(): React.ReactElement {
 
   const endRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages]);
 
   return (
