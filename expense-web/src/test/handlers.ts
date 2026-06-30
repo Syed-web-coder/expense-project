@@ -37,4 +37,11 @@ export const handlers = [
       capturedAt: '2025-01-04T00:00:00Z',
     }),
   ),
+  http.get('/api/v1/merchants', () =>
+    HttpResponse.json([{ id: 'stub-1', mccCode: '5411', capturedAt: '2025-01-01T00:00:00Z' }]),
+  ),
 ];
+
+export const merchantErrorHandler = http.get('/api/v1/merchants', () =>
+  HttpResponse.json({ error: 'boom' }, { status: 500 }),
+);

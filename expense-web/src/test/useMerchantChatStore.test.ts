@@ -41,7 +41,7 @@ describe('useMerchantChatStore', () => {
     useMerchantChatStore.getState().appendAssistantMessage(stubMessage);
     const raw = localStorage.getItem('uc:merchant-chat');
     expect(raw).not.toBeNull();
-    const parsed = JSON.parse(raw as string);
+    const parsed = JSON.parse(raw as string) as unknown as { state: { messages: UIMessage[] } };
     expect(parsed.state.messages).toEqual([stubMessage]);
   });
 

@@ -36,7 +36,7 @@ export function MerchantSummaryPage() {
 
   return (
     <div>
-      <button onClick={() => summarize({ variables: { id: id! } })} disabled={loading}>
+      <button onClick={() => { summarize({ variables: { id: id! } }).catch(() => {}); }} disabled={loading}>
         Summarize
       </button>
       {error && <div role="alert">Error: {error.message}</div>}
