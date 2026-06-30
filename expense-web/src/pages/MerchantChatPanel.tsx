@@ -25,7 +25,7 @@ export function MerchantChatPanel(): React.ReactElement {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() === '') return;
-    sendMessage({ text: input });
+    void sendMessage({ text: input });
     setInput('');
   };
 
@@ -80,10 +80,10 @@ export function MerchantChatPanel(): React.ReactElement {
         <button type="submit" disabled={isLoading || input.trim() === ''}>
           Send
         </button>
-        <button type="button" onClick={stop} disabled={!isLoading}>
+        <button type="button" onClick={() => { void stop(); }} disabled={!isLoading}>
           Stop
         </button>
-        <button type="button" onClick={() => regenerate()} disabled={isLoading}>
+        <button type="button" onClick={() => { void regenerate(); }} disabled={isLoading}>
           Regenerate
         </button>
       </form>

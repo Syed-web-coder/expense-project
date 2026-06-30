@@ -5,7 +5,7 @@ export function LoginPage() {
 
   function handleSignIn() {
     localStorage.setItem('uc:jwt', 'dev-fake-jwt-token');
-    navigate('/merchants');
+    void navigate('/merchants');
   }
 
   return (
