@@ -156,3 +156,7 @@ Replaced the W4D3 one-shot "Summarize" GraphQL mutation with a full streaming ch
 Key technical challenge: The installed SDK versions (ai@7.0.4, @ai-sdk/react@4.0.5) were several major versions ahead of the lesson's reference code. Every API surface the reference assumed had changed: useChat no longer manages input state, toDataStreamResponse was renamed to toUIMessageStreamResponse, convertToModelMessages is async (missing await caused a TypeError: messages.some is not a function at runtime), parameters became inputSchema on tool definitions, maxSteps was replaced by stopWhen: stepCountIs(n), and tool calls render as typed message.parts entries rather than message.toolInvocations. Each divergence was caught via pnpm typecheck or runtime debugging, then verified against the official AI SDK migration docs before fixing.
 
 Docker limitation (consistent with prior weeks): Live tool-call execution against a real model was not verifiable without Docker/the W3D4 Spring AI backend. Verified with a local canned-stream Node server instead. The non-tool-call streaming path, Stop, Regenerate, error handling, and Zustand persistence were all fully confirmed in-browser.
+
+## Week 4 Day 5
+
+Added RTL+Vitest harness, MSW integration tests, Playwright E2E, ESLint 9 flat config, and jest-axe accessibility checks. 60 Vitest tests across 15 files, 1 Playwright E2E test. New scripts: pnpm test, pnpm lint, pnpm e2e, pnpm check. Branch: week04/day5/Syed-web-coder.
