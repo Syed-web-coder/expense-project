@@ -160,3 +160,56 @@ Docker limitation (consistent with prior weeks): Live tool-call execution agains
 ## Week 4 Day 5
 
 Added RTL+Vitest harness, MSW integration tests, Playwright E2E, ESLint 9 flat config, and jest-axe accessibility checks. 60 Vitest tests across 15 files, 1 Playwright E2E test. New scripts: pnpm test, pnpm lint, pnpm e2e, pnpm check. Branch: week04/day5/Syed-web-coder.
+
+## Week 5 Day 1 — Docker, Multi-Stage Build, Distroless & CI Scan Gate
+
+## What I built
+Containerised the existing Spring Boot expense-tracking service as a hardened Docker image with a full CI gate.
+
+## Files added
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Three-stage build (builder → extractor → runtime), digest-pinned base images, layered JAR layout, non-root user, HEALTHCHECK, OCI labels |
+| `.dockerignore` | Excludes `.git`, `build/`, `.env*`, `*.pem`, `*.key`, `secrets/`, `credentials.json` |
+| `.hadolint.yaml` | Dockerfile linting config with `failure-threshold: warning` and trusted registries |
+| `docker/SECURITY.md` | Base image choices, pinned digests, three operator commands, scan cadence, tagging policy, Trivy waivers |
+| `docker/SIZE.md` | Before/after image size comparison (single-stage ~700 MB → three-stage 221 MB, ~68% reduction) |
+| `.github/workflows/docker.yml` | CI gate: hadolint → build → Trivy (HIGH/CRITICAL) → 60s smoke test |
+
+## Files modified
+| File | Change |
+|------|--------|
+| `build.gradle` | Bumped Spring Boot 3.4.3 → 3.4.6 to resolve CRITICAL CVE-2025-41232 in Spring Security |
+| `SecurityConfig.java` | Added `/actuator/health/**` to public permit list so the smoke test health probe isn't blocked by JWT auth |
+
+## Key decisions
+- **HEALTHCHECK path B**: used `eclipse-temurin:21-jre-jammy` as the runtime base instead of distroless, enabling `curl`-based health checks without shipping a custom Go probe binary. Trade-off documented in `docker/SECURITY.md`.
+- **Digest pinning**: all three base images pinned by `sha256` digest, not mutable tags.
+- **Layer cache**: `COPY` order is least-to-most-changing (wrapper → gradle dir → build files → dependency pre-warm → src), so a code-only change doesn't re-download dependencies.
+- **Spring Boot bump**: upgraded to 3.4.6 which resolved the Spring Security CRITICAL and several Tomcat HIGH findings. Remaining CVEs in Netty, Kafka, and Spring AI 1.1.2 are documented as dated waivers pending upstream fixes.
+
+## Verification
+```bash
+# 0 hadolint warnings
+hadolint Dockerfile --config .hadolint.yaml
+
+# Image size under 250 MB (content size: 221 MB)
+docker images uptimecrew/expense-api
+
+# Health probe returns UP
+curl http://localhost:8080/actuator/health/readiness
+# {"status":"UP"}
+
+# Non-root user
+docker exec expense-api id
+# uid=1000 gid=0(root) groups=0(root)
+
+# Image pushed to GHCR
+# ghcr.io/nishis0205/expense-api@sha256:f300fe8c58cda18ca13d68e4d1309b86f86654f6d6779efe4e7a90017c7d1aff
+```
+
+## CI note
+`build-scan-smoke` failed on PR #27 due to `trivy-action@0.28.0` being unavailable on the GitHub Actions marketplace. Fixed in commit `79ab877` by updating to `v0.30.0`. The `hadolint` job passed on every run.
+
+## AI-tool review note
+Claude suggested using `FROM eclipse-temurin:21` (unpinned, full JDK) for the runtime stage for simplicity — rejected because it includes the full JDK (~340 MB extra) and is a mutable tag. Claude's suggestion to use path B (Temurin JRE with curl) for the HEALTHCHECK instead of a custom Go probe binary was accepted, with the trade-off documented in `SECURITY.md`.
