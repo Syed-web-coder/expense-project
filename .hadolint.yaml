@@ -5,3 +5,4 @@ trustedRegistries:
   - ghcr.io
   - docker.io
 failure-threshold: warning
+# CI test
