@@ -1,0 +1,80 @@
+name: expense-api docker
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.hadolint.yaml'
+      - '.github/workflows/docker.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'src/**'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  hadolint:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: warning
+
+  build-scan-smoke:
+    runs-on: ubuntu-22.04
+    needs: hadolint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (PR — don't push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          load: true
+          tags: uptimecrew/expense-api:ci-${{ github.run_id }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: Trivy scan — fail on HIGH/CRITICAL
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: uptimecrew/expense-api:ci-${{ github.run_id }}
+          severity:  HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Smoke test — boot, health, kill
+        run: |
+          docker run -d --name expense-smoke \
+            -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=smoke \
+            -e MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED=true \
+            -e MANAGEMENT_HEALTH_LIVENESSSTATE_ENABLED=true \
+            -e MANAGEMENT_HEALTH_READINESSSTATE_ENABLED=true \
+            uptimecrew/expense-api:ci-${{ github.run_id }}
+
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8080/actuator/health/readiness; then
+              echo "Healthy after $((i*2))s"
+              docker stop expense-smoke
+              docker rm expense-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Failed health check; logs follow:"
+          docker logs expense-smoke
+          exit 1

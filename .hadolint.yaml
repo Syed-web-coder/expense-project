@@ -1,0 +1,7 @@
+ignored: []
+trustedRegistries:
+  - gcr.io
+  - public.ecr.aws
+  - ghcr.io
+  - docker.io
+failure-threshold: warning
