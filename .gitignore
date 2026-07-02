@@ -5,3 +5,6 @@ out/
 .vscode/
 *.iml
 envs/
+manifests/*.local.yaml
+pod-logs.txt
+.k3d/

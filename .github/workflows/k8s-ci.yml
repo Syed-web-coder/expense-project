@@ -1,0 +1,178 @@
+# .github/workflows/k8s-ci.yml
+name: expense-api k8s-ci
+on:
+  pull_request:
+    paths:
+      - 'manifests/**'
+      - 'scripts/k8s-*.sh'
+      - 'src/**'
+      - 'build.gradle'
+      - 'Dockerfile'
+      - 'db/**'
+      - '.github/workflows/k8s-ci.yml'
+permissions:
+  contents: read
+jobs:
+  manifests-validate-and-deploy:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # ----- 1. Static validation (no cluster yet) -------------------
+      - name: Install kubeconform
+        run: |
+          curl -sSL \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - name: kubeconform manifests/
+        run: kubeconform -strict -summary -schema-location default manifests/
+
+      # ----- 2. Spin up k3d (Traefik disabled; we install real NGINX) --
+      - uses: docker/setup-buildx-action@v3
+      - name: Build expense-api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: uptimecrew/expense-api:${{ github.sha }}
+      - name: Spin up k3d cluster
+        uses: AbsaOSS/k3d-action@v2
+        with:
+          cluster-name: expense-ci
+          k3d-version: v5.7.4
+          args: --servers 1 --agents 2 --port "8080:80@loadbalancer" --k3s-arg "--disable=traefik@server:0"
+      - name: Install NGINX ingress controller
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/baremetal/deploy.yaml
+          kubectl patch svc ingress-nginx-controller -n ingress-nginx -p '{"spec":{"type":"LoadBalancer"}}'
+          kubectl rollout status deploy/ingress-nginx-controller -n ingress-nginx --timeout=2m
+      - name: Import image into the cluster
+        run: k3d image import uptimecrew/expense-api:${{ github.sha }} -c expense-ci
+
+      # ----- 3. Throwaway Postgres + Mongo for this CI run ------------
+      - name: Deploy throwaway Postgres + Mongo
+        run: |
+          kubectl create namespace expense-dev || true
+          cat <<'EOF' | kubectl apply -f -
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: postgres
+            namespace: expense-dev
+            labels: { app.kubernetes.io/name: postgres }
+          spec:
+            replicas: 1
+            selector: { matchLabels: { app.kubernetes.io/name: postgres } }
+            template:
+              metadata: { labels: { app.kubernetes.io/name: postgres } }
+              spec:
+                containers:
+                - name: postgres
+                  image: postgres:16-alpine
+                  ports: [{ name: postgres, containerPort: 5432 }]
+                  env:
+                  - { name: POSTGRES_DB, value: expense_dev }
+                  - { name: POSTGRES_USER, value: expense_dev }
+                  - { name: POSTGRES_PASSWORD, value: cipassword }
+                  readinessProbe:
+                    exec: { command: ["pg_isready", "-U", "expense_dev"] }
+                    periodSeconds: 5
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: postgres
+            namespace: expense-dev
+            labels: { app.kubernetes.io/name: postgres }
+          spec:
+            type: ClusterIP
+            selector: { app.kubernetes.io/name: postgres }
+            ports: [{ name: postgres, port: 5432, targetPort: postgres }]
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: mongo
+            namespace: expense-dev
+            labels: { app.kubernetes.io/name: mongo }
+          spec:
+            replicas: 1
+            selector: { matchLabels: { app.kubernetes.io/name: mongo } }
+            template:
+              metadata: { labels: { app.kubernetes.io/name: mongo } }
+              spec:
+                containers:
+                - name: mongo
+                  image: mongo:7
+                  ports: [{ name: mongo, containerPort: 27017 }]
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: mongo
+            namespace: expense-dev
+            labels: { app.kubernetes.io/name: mongo }
+          spec:
+            type: ClusterIP
+            selector: { app.kubernetes.io/name: mongo }
+            ports: [{ name: mongo, port: 27017, targetPort: mongo }]
+          EOF
+          kubectl rollout status deploy/postgres -n expense-dev --timeout=2m
+          kubectl rollout status deploy/mongo -n expense-dev --timeout=2m
+      - name: Seed Postgres schema
+        run: |
+          POD=$(kubectl get pod -l app.kubernetes.io/name=postgres -n expense-dev -o jsonpath='{.items[0].metadata.name}')
+          for f in db/V1__schema.sql db/V2__seed.sql db/V3__outbox.sql db/V4__transaction_idempotency_key.sql; do
+            kubectl exec -i "$POD" -n expense-dev -- psql -U expense_dev -d expense_dev < "$f" || true
+          done
+
+      # ----- 4. Patch image tag + seed Secret from CI value -----------
+      - name: Patch image tag in Deployment manifest
+        run: |
+          sed -i "s|uptimecrew/expense-api:0.1.0|uptimecrew/expense-api:${{ github.sha }}|g" \
+            manifests/10-expense-api.deployment.yaml
+      # ----- 5. Server-side admission + apply ------------------------
+      - name: Server-side dry-run
+        run: kubectl apply -f manifests/ --dry-run=server
+      - name: Apply
+        run: kubectl apply -f manifests/
+      # NOTE: Secret is seeded AFTER apply, on purpose. manifests/apply
+      # includes the committed placeholder Secret -- seeding the real
+      # value before Apply would just get overwritten by that placeholder.
+      - name: Seed Secret from CI value (NOT from the committed placeholder)
+        # This CI run's Postgres is a disposable, ephemeral container that
+        # exists only for the lifetime of this job -- there is no real
+        # secret to protect, so the password is set inline rather than
+        # pulled from a GitHub Actions repo secret. It MUST match the
+        # throwaway Postgres's POSTGRES_PASSWORD set above.
+        run: |
+          kubectl create secret generic expense-api-secrets \
+            -n expense-dev \
+            --from-literal=SPRING_DATASOURCE_PASSWORD=cipassword \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl rollout restart deploy/expense-api -n expense-dev
+      - name: Wait for rollout (gates the build)
+        run: |
+          kubectl rollout status \
+            deploy/expense-api -n expense-dev --timeout=8m
+
+      # ----- 6. Smoke ------------------------------------------------
+      - name: Smoke test through the Ingress
+        run: ./scripts/k8s-smoke.sh
+
+      # ----- 7. Diagnostics on failure -------------------------------
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -n expense-dev
+          kubectl describe deploy/expense-api -n expense-dev
+          kubectl logs deploy/expense-api -n expense-dev \
+            --tail=200 > pod-logs.txt || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: k8s-diagnostics
+          path: pod-logs.txt
+          retention-days: 14
