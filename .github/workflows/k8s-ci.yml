@@ -132,6 +132,14 @@ jobs:
         run: |
           sed -i "s|uptimecrew/expense-api:0.1.0|uptimecrew/expense-api:${{ github.sha }}|g" \
             manifests/10-expense-api.deployment.yaml
+      # ----- 5. Server-side admission + apply ------------------------
+      - name: Server-side dry-run
+        run: kubectl apply -f manifests/ --dry-run=server
+      - name: Apply
+        run: kubectl apply -f manifests/
+      # NOTE: Secret is seeded AFTER apply, on purpose. manifests/apply
+      # includes the committed placeholder Secret -- seeding the real
+      # value before Apply would just get overwritten by that placeholder.
       - name: Seed Secret from CI value (NOT from the committed placeholder)
         # This CI run's Postgres is a disposable, ephemeral container that
         # exists only for the lifetime of this job -- there is no real
@@ -144,11 +152,7 @@ jobs:
             --from-literal=SPRING_DATASOURCE_PASSWORD=cipassword \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      # ----- 5. Server-side admission + apply ------------------------
-      - name: Server-side dry-run
-        run: kubectl apply -f manifests/ --dry-run=server
-      - name: Apply
-        run: kubectl apply -f manifests/
+          kubectl rollout restart deploy/expense-api -n expense-dev
       - name: Wait for rollout (gates the build)
         run: |
           kubectl rollout status \
