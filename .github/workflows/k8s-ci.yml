@@ -40,6 +40,7 @@ jobs:
         uses: AbsaOSS/k3d-action@v2
         with:
           cluster-name: expense-ci
+          k3d-version: v5.7.4
           args: --servers 1 --agents 2 --port "8080:80@loadbalancer" --k3s-arg "--disable=traefik@server:0"
       - name: Install NGINX ingress controller
         run: |
