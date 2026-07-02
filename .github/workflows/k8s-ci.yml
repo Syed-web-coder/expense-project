@@ -5,7 +5,9 @@ on:
     paths:
       - 'manifests/**'
       - 'scripts/k8s-*.sh'
-      - 'expense-api/**'
+      - 'src/**'
+      - 'build.gradle'
+      - 'Dockerfile'
       - 'db/**'
       - '.github/workflows/k8s-ci.yml'
 permissions:
@@ -31,7 +33,7 @@ jobs:
       - name: Build expense-api image
         uses: docker/build-push-action@v6
         with:
-          context: ./expense-api
+          context: .
           load: true
           tags: uptimecrew/expense-api:${{ github.sha }}
       - name: Spin up k3d cluster
