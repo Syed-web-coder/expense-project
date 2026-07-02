@@ -254,3 +254,25 @@ docker compose -f compose.yaml -f compose.profiles.yaml --profile test config --
 
 ### Branch
 `week05/day2/Syed-web-coder`
+
+## Week 5 Day 3
+
+Added a full Kubernetes deployment for the expense-tracking service — a local k3d cluster running the W5D1 hardened image as a Deployment + Service + ConfigMap + Secret + HPA + Ingress, with a rolling update and rollback proven through `kubectl rollout`, gated by a CI workflow.
+
+- `manifests/00-namespace.yaml` — `expense-dev` Namespace with a ResourceQuota (4 CPU/8Gi requests, 8 CPU/16Gi limits, 20 pods) and a LimitRange supplying container defaults
+- `manifests/10-expense-api.deployment.yaml` — 3 replicas, zero-downtime `RollingUpdate` (`maxUnavailable: 0`/`maxSurge: 1`), `runAsNonRoot` UID 65532, `envFrom` ConfigMap + Secret, three probes on distinct liveness/readiness paths, resources (requests + memory limit, no CPU limit per the requests-only CPU pattern)
+- `manifests/20-expense-api.service.yaml` — ClusterIP with a named `http` targetPort
+- `manifests/30-expense-api.configmap.yaml` / `40-expense-api.secret.yaml` — non-secret env in the ConfigMap; `stringData` (never hand-base64) in the Secret
+- `manifests/50-expense-api.hpa.yaml` — `autoscaling/v2` HPA, CPU target 70%, min 2/max 5, fast-scale-up + 5-minute-cooldown scale-down behavior — verified scaling 2→5 replicas under a `hey` load test
+- `manifests/60-expense-api.ingress.yaml` — `networking.k8s.io/v1` Ingress, `ingressClassName: nginx`
+- `scripts/k8s-up.sh` / `scripts/k8s-smoke.sh` — one-shot cluster bring-up and a 3-check Ingress smoke test
+- `.github/workflows/k8s-ci.yml` — kubeconform, image build, disposable k3d cluster, throwaway Postgres/Mongo (schema seeded from `db/V1`–`V4`), dry-run + apply + rollout-status + smoke, diagnostics artifact on failure
+
+**Notable deviations from the lesson doc:**
+- **k3d's actual default ingress controller is Traefik, not NGINX.** The cluster is created with `--k3s-arg "--disable=traefik@server:0"`, and the real NGINX ingress controller is installed separately; its Service needed patching from `NodePort` to `LoadBalancer` for k3d's built-in `servicelb` to route traffic to it.
+- **`application.yml` has no k8s-aware profile for its Postgres/Mongo/Kafka hosts** — they're hardcoded to `localhost`, which only resolves correctly under Compose (host networking or published ports), not inside a k3d pod. Added a local-only, gitignored `manifests/95-postgres.local.yaml` (Postgres + Mongo) purely so the app can boot locally; CI stands up the same throwaway pair inline in the workflow and seeds the schema from the W2D1 migration files.
+- `SPRING_KAFKA_LISTENER_AUTO_STARTUP=false` added to the ConfigMap — the W3D3 `@KafkaListener` otherwise blocks the whole app from starting when no broker is reachable, which is out of scope for this lab.
+- CI's Secret must be seeded **after** `kubectl apply -f manifests/`, not before — the committed placeholder Secret in `manifests/` would otherwise overwrite the real CI-seeded password on every apply, causing a silent Postgres auth failure that took several CI runs to trace back to `pod-logs.txt`.
+- Smoke test accepts `200`, `401`, or `404` from `/api/v1/merchants/{id}` (not just `200`/`404`) since that route requires a JWT per W3D1's security setup.
+
+**Note on local environment friction (Colima/k3d):** A mid-session Colima restart (triggered while chasing an unrelated stale-port issue) left the k3d nodes' containerd state desynced, requiring a full cluster teardown/recreate to recover. This is a documented, one-off environmental hiccup — not a manifest or CI issue — but explains the unusually high revision count in `kubectl rollout history` from this session.
