@@ -1,0 +1,113 @@
+# compose.yaml - local-dev stack for expense-api.
+# Compose v2: no top-level `version:` field.
+# Bring up: docker compose up -d --wait
+# Tear down: docker compose down -v
+
+name: expense_dev
+
+services:
+  expense-api:
+    image: uptimecrew/expense-api:0.1.0
+    networks: [expense_net]
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./envs/expense.env
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expense_dev
+      SPRING_DATASOURCE_USERNAME: expense_dev
+      SPRING_DATASOURCE_PASSWORD: expense_dev_password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/expense
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ""
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://placeholder/jwks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+      kafka:    { condition: service_healthy }
+      mongo:    { condition: service_healthy }
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    networks: [expense_net]
+    environment:
+      POSTGRES_DB: expense_dev
+      POSTGRES_USER: expense_dev
+      POSTGRES_PASSWORD: expense_dev_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./db/V1__schema.sql:/migrations/V1__schema.sql:ro
+      - ./db/V2__seed.sql:/migrations/V2__seed.sql:ro
+      - ./db/V3__outbox.sql:/migrations/V3__outbox.sql:ro
+      - ./db/V4__transaction_idempotency_key.sql:/migrations/V4__transaction_idempotency_key.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U expense_dev -d expense_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    networks: [expense_net]
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    networks: [expense_net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  kafka:
+    image: apache/kafka:3.7.1
+    networks: [expense_net]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: expense-kafka-cluster-01
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  expense_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  mongodata:
+  kafka-data:

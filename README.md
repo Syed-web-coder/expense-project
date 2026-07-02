@@ -213,3 +213,44 @@ docker exec expense-api id
 
 ## AI-tool review note
 Claude suggested using `FROM eclipse-temurin:21` (unpinned, full JDK) for the runtime stage for simplicity — rejected because it includes the full JDK (~340 MB extra) and is a mutable tag. Claude's suggestion to use path B (Temurin JRE with curl) for the HEALTHCHECK instead of a custom Go probe binary was accepted, with the trade-off documented in `SECURITY.md`.
+
+## Week 5 Day 2 — Docker Compose Polyglot Stack
+
+### What I built
+Wired the `uptimecrew/expense-api:0.1.0` image into a full local-dev stack using Docker Compose v2.
+
+### Files added
+| File | Purpose |
+|------|---------|
+| `compose.yaml` | Four-service stack (expense-api, postgres:16, redis:7, kafka:3.7.1, mongo:7) with healthchecks, named volumes, bridge network, depends_on with service_healthy |
+| `compose.override.yaml` | Local-dev tweaks: JDWP debug port 5005, dev profile live-reload service (expense-api-dev on port 8081) |
+| `compose.profiles.yaml` | Profile-gated sidecars: expense-web (e2e), seed-fixtures (test), otelcol + jaeger (observability/e2e) |
+| `Makefile` | Convenience targets: up, down, smoke, logs, ps |
+| `scripts/smoke.sh` | Isolated smoke test using per-invocation project name to avoid parallel conflicts |
+| `scripts/dev.md` | Live-reload loop documentation |
+| `envs/expense.env` | Environment variables (gitignored) |
+
+### Key decisions
+- Used plain `SPRING_DATASOURCE_PASSWORD` env var instead of Docker secrets `_FILE` pattern — Spring Boot doesn't natively read `_FILE`-suffixed vars without extra config
+- Kafka image corrected from `apache/kafka:3.7` (doesn't exist) to `apache/kafka:3.7.1`
+- Added mongo:7 service because the app has MerchantReadModelRepository backed by MongoDB
+- Overrode Dockerfile HEALTHCHECK to use `/actuator/health` instead of `/actuator/health/readiness` (readiness probe not exposed without `management.endpoint.health.probes.enabled=true`)
+- `envs/` added to `.gitignore` so credentials never reach the repo
+
+### Verification
+```bash
+# Config validates cleanly
+docker compose config --quiet
+
+# All 5 services healthy
+docker compose ps
+
+# dev profile lists expense-api-dev
+docker compose --profile dev config --services
+
+# test profile lists seed-fixtures
+docker compose -f compose.yaml -f compose.profiles.yaml --profile test config --services
+```
+
+### Branch
+`week05/day2/Syed-web-coder`
