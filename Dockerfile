@@ -15,6 +15,8 @@ COPY gradlew gradlew.bat ./
 COPY gradle/ gradle/
 COPY build.gradle settings.gradle ./
 
+RUN sed -i 's/\r//' gradlew && chmod +x gradlew
+
 RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
     ./gradlew --no-daemon dependencies
 
