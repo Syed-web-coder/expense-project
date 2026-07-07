@@ -1,9 +1,6 @@
 # .github/workflows/_build-and-push.yml
 # Reusable workflow: build + Trivy + push to ECR via OIDC.
 # Called from ci.yml on main; never invoked directly by a UI dispatch.
-#
-# Task 2 status: build half only (composite action + buildx + local build).
-# Trivy scan + AWS OIDC + ECR push land in Task 3.
 name: _build-and-push
 
 on:
@@ -22,10 +19,15 @@ on:
 # No permissions block here — the caller's job-level block is what gets
 # applied. Documenting that with a comment so the next reader knows.
 
+env:
+  AWS_REGION:  us-east-1
+  AWS_ACCOUNT: "475790160484"
+
 jobs:
   build-scan-push:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    environment: dev      # gates secrets + auto-deploys to dev on main
     concurrency:
       group: build-push-${{ inputs.app-name }}
       cancel-in-progress: false
@@ -35,6 +37,17 @@ jobs:
 
       - name: Set up build env (composite)
         uses: ./.github/actions/setup-build
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d  # v6.2.2
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT }}:role/expense-api-build-push
+          aws-region:     ${{ env.AWS_REGION }}
+          role-session-name: gh-${{ github.run_id }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@b040164c4934333d597f3f9c67502ff28f814e9c  # v2.1.6
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
@@ -46,6 +59,28 @@ jobs:
           context: .
           load:    true
           tags: ${{ inputs.image-name }}:${{ github.sha }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: Trivy scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8  # v0.36.0
+        with:
+          image-ref: ${{ inputs.image-name }}:${{ github.sha }}
+          severity:  HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+
+      - name: Push image to ECR (SHA tag + main tag)
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75  # v6.9.0
+        with:
+          context: .
+          push:    true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ inputs.ecr-repo }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ inputs.ecr-repo }}:main
           build-args: |
             APP_VERSION=${{ github.sha }}
             GIT_SHA=${{ github.sha }}

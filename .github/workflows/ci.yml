@@ -47,6 +47,9 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: build-test
     uses: ./.github/workflows/_build-and-push.yml
+    permissions:
+      contents: read
+      id-token: write     # required to mint the OIDC token for AWS STS
     with:
       app-name:   expense-api
       image-name: uptimecrew/expense-api
