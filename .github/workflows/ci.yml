@@ -24,15 +24,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
-
-      - name: Set up JDK 21 (Temurin)
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4.8.0
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
+      - name: Set up build env (composite)
+        uses: ./.github/actions/setup-build
 
       - name: Gradle build + tests
         run: ./gradlew --no-daemon build
@@ -44,3 +37,14 @@ jobs:
           name: expense-api-test-reports
           path: build/reports/tests/
           retention-days: 7
+
+  call-build-and-push:
+    # On push to main only: drives the reusable workflow that builds
+    # the image (Task 2), and will add Trivy + ECR push in Task 3.
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: build-test
+    uses: ./.github/workflows/_build-and-push.yml
+    with:
+      app-name:   expense-api
+      image-name: uptimecrew/expense-api
+      ecr-repo:   uptimecrew/expense-api
