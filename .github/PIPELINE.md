@@ -91,3 +91,24 @@ not have; requested from the repo owner (Syed):
 - Argo CD GitOps — W6 D2 (replaces the
   `kubectl apply` push pattern with a manifest-repo commit).
 - SLSA provenance / cosign signing — Week 7 security day.
+
+## github-actions-author Skill audit
+
+Per the assignment spec, this was meant to be run as an AI-assisted
+review pass against the hand-written workflow files. It was not
+found in this environment:
+
+- `~/.claude/skills/` — does not exist / empty
+- `.claude/skills/` (repo-local) — does not exist / empty
+- `find / -iname "*github-actions-author*"` — no matches anywhere
+  on the system
+
+The Skill does not appear to be distributed as part of this
+environment's setup, so no comparison output exists to audit
+against. Flagging this to the Code Coach rather than fabricating a
+comparison. The two review criteria the spec calls out (unpinned
+`@v4` tags without SHAs; redundant `actions/cache@v4` alongside
+`setup-java`'s built-in cache) were manually checked instead —
+neither issue is present in `ci.yml`, `_build-and-push.yml`,
+`deploy-prod.yml`, or `action.yml`; all actions are SHA-pinned and
+the only cache mechanism used is `setup-java`'s `cache: gradle`.
