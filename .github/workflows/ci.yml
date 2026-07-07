@@ -1,0 +1,46 @@
+# .github/workflows/ci.yml
+name: expense-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# PR force-pushes cancel stale runs; main pushes serialise.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Top-level default: read-only. Individual jobs widen as needed.
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build + test (expense-api)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Gradle build + tests
+        run: ./gradlew --no-daemon build
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: expense-api-test-reports
+          path: build/reports/tests/
+          retention-days: 7
