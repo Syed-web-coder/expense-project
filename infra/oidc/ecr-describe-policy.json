@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ECRDescribeImages",
+      "Effect": "Allow",
+      "Action": "ecr:DescribeImages",
+      "Resource": "arn:aws:ecr:us-east-1:475790160484:repository/uptimecrew/expense-api"
+    }
+  ]
+}
