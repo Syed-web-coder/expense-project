@@ -30,6 +30,9 @@ jobs:
       group: build-push-${{ inputs.app-name }}
       cancel-in-progress: false
     steps:
+      - name: Checkout (required to load local composite action)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+
       - name: Set up build env (composite)
         uses: ./.github/actions/setup-build
 
