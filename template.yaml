@@ -4,6 +4,10 @@ Parameters:
   StageName:
     Type: String
     Default: dev
+    AllowedValues:
+      - dev
+      - sandbox
+      - prod
   LogRetentionDays:
     Type: Number
     Default: 30

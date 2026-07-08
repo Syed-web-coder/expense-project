@@ -29,24 +29,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aws-actions/setup-sam@v2
-
-      - name: SAM validate + lint
-        run: sam validate --lint
-
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: corretto
 
-      - name: mvn test
-        run: mvn test
-
       - name: mvn package
         run: mvn package -DskipTests
 
+      - uses: aws-actions/setup-sam@v2
+
+      - name: SAM validate + lint
+        run: sam validate --lint
+
+      - name: mvn test
+        run: mvn test
+
       - name: SAM build
-        run: sam build --use-container
+        run: sam build
 
       - name: SAM local invoke (prove handler loads)
         run: |
@@ -81,18 +81,20 @@ jobs:
         run: mvn package -DskipTests
 
       - name: SAM build
-        run: sam build --use-container
+        run: sam build
 
       - name: Deploy
         run: bash scripts/sam-deploy.sh
         env:
           STACK: expense-lambda-sandbox
+          STAGE: sandbox
           AWS_REGION: ${{ vars.AWS_REGION }}
 
       - name: Smoke test
         run: bash scripts/sam-smoke.sh
         env:
           STACK: expense-lambda-sandbox
+          STAGE: sandbox
           AWS_REGION: ${{ vars.AWS_REGION }}
 
       - name: Collect diagnostics

@@ -4,8 +4,8 @@ set -euo pipefail
 STACK="${STACK:-expense-lambda-sandbox}"
 REGION="${AWS_REGION:-us-east-1}"
 
-# Derive stage name from stack name: expense-lambda-<stage>
-STAGE="${STACK#expense-lambda-}"
+# Derive stage name from stack name: expense-lambda-<stage>; STAGE env var takes precedence
+STAGE="${STAGE:-${STACK#expense-lambda-}}"
 
 echo "==> Deploying stack: $STACK  (stage: $STAGE)  region: $REGION"
 
