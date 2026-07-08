@@ -25,13 +25,16 @@ echo "    HTTP $STATUS"
   exit 1
 }
 
-# --- unrouted path: must 404 ---
-echo "==> GET /merchants/  (expecting 404)..."
+# --- empty merchantId path: accept 400 or 404 ---
+# HTTP API (v2) routes GET /merchants/ to the handler with an empty {merchantId}
+# param rather than returning a gateway-level 404. Both outcomes prove correct
+# rejection: 404 = route miss at gateway, 400 = handler rejecting empty merchantId.
+echo "==> GET /merchants/  (expecting 400 or 404)..."
 STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
   "$API_URL/merchants/" || true)
 echo "    HTTP $STATUS"
-[[ "$STATUS" == "404" ]] || {
-  echo "ERROR: expected 404 for /merchants/, got $STATUS" >&2
+[[ "$STATUS" == "400" || "$STATUS" == "404" ]] || {
+  echo "ERROR: expected 400 or 404 for /merchants/, got $STATUS" >&2
   exit 1
 }
 
