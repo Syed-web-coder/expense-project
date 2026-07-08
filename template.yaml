@@ -57,7 +57,6 @@ Resources:
       SkipBuild: True
     Properties:
       FunctionName: !Sub "expense-merchant-lookup-${StageName}"
-      Handler: com.uptimecrew.expense.lambda.MerchantLookupHandler::handleRequest
       CodeUri: target/expense-merchant-lookup-1.0.0.jar
       SnapStart:
         ApplyOn: PublishedVersions
