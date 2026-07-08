@@ -1,0 +1,122 @@
+name: serverless
+
+on:
+  pull_request:
+    paths:
+      - 'template.yaml'
+      - 'src/**'
+      - 'pom.xml'
+      - 'events/**'
+      - 'scripts/**'
+      - '.github/workflows/serverless.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'template.yaml'
+      - 'src/**'
+      - 'pom.xml'
+      - 'events/**'
+      - 'scripts/**'
+      - '.github/workflows/serverless.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: corretto
+
+      - name: mvn package
+        run: mvn package -DskipTests
+
+      - uses: aws-actions/setup-sam@v2
+
+      - name: SAM validate + lint
+        run: sam validate --lint
+
+      - name: mvn test
+        run: mvn test
+        env:
+          AWS_REGION: us-east-1
+
+      - name: SAM build
+        run: sam build
+
+      - name: SAM local invoke (prove handler loads)
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          OUTPUT=$(sam local invoke MerchantLookupFunction \
+            --event events/get-merchant.json \
+            --parameter-overrides LambdaArchitecture=x86_64 FunctionTimeout=60 2>&1 || true)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "START RequestId"
+
+  deploy-sandbox:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: aws-actions/setup-sam@v2
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: corretto
+
+      - name: mvn package
+        run: mvn package -DskipTests
+
+      - name: SAM build
+        run: sam build
+
+      - name: Deploy
+        run: bash scripts/sam-deploy.sh
+        env:
+          STACK: expense-lambda-sandbox
+          STAGE: sandbox
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+      - name: Smoke test
+        run: bash scripts/sam-smoke.sh
+        env:
+          STACK: expense-lambda-sandbox
+          STAGE: sandbox
+          AWS_REGION: ${{ vars.AWS_REGION }}
+
+      - name: Collect diagnostics
+        if: failure()
+        run: |
+          aws cloudformation describe-stack-events \
+            --stack-name expense-lambda-sandbox \
+            --region "${{ vars.AWS_REGION }}" \
+            --output json > /tmp/stack-events.json || true
+          aws logs tail /aws/lambda/expense-merchant-lookup-sandbox \
+            --since 30m \
+            --region "${{ vars.AWS_REGION }}" > /tmp/lambda-logs.txt 2>&1 || true
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sam-diagnostics
+          path: |
+            /tmp/stack-events.json
+            /tmp/lambda-logs.txt

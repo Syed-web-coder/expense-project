@@ -1,0 +1,107 @@
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - sandbox
+      - prod
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+  LambdaArchitecture:
+    Type: String
+    Default: arm64
+    AllowedValues:
+      - arm64
+      - x86_64
+  FunctionTimeout:
+    Type: Number
+    Default: 10
+
+Globals:
+  Function:
+    Runtime: java21
+    Architectures:
+      - !Ref LambdaArchitecture
+    MemorySize: 1024
+    Timeout: !Ref FunctionTimeout
+    Tracing: Active
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+
+  ExpenseHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref StageName
+
+  MerchantsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "merchants-${StageName}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  MerchantLookupFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      SkipBuild: True
+    Properties:
+      FunctionName: !Sub "expense-merchant-lookup-${StageName}"
+      Handler: com.uptimecrew.expense.lambda.MerchantLookupHandler::handleRequest
+      CodeUri: target/expense-merchant-lookup-1.0.0.jar
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: live
+      Environment:
+        Variables:
+          MERCHANTS_TABLE: !Ref MerchantsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref MerchantsTable
+      Events:
+        GetMerchant:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ExpenseHttpApi
+            Path: /merchants/{merchantId}
+            Method: GET
+
+  MerchantLookupFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/expense-merchant-lookup-${StageName}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  MerchantLookupFunctionP99Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${MerchantLookupFunction}-p99-latency
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref MerchantLookupFunction
+        - Name: Resource
+          Value: !Sub ${MerchantLookupFunction}:live
+      ExtendedStatistic: p99
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 1500
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  HttpApiUrl:
+    Value: !Sub https://${ExpenseHttpApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}
+  FunctionName:
+    Value: !Ref MerchantLookupFunction
