@@ -278,7 +278,7 @@ Added a full Kubernetes deployment for the expense-tracking service — a local 
 **Note on local environment friction (Colima/k3d):** A mid-session Colima restart (triggered while chasing an unrelated stale-port issue) left the k3d nodes' 
 
 
-##Week 5 Day 4 — MerchantLookupHandler (Serverless)
+#Week 5 Day 4 — MerchantLookupHandler (Serverless)
 1. Overview
 Day 4 re-ships the merchant read-side as a standalone AWS Lambda function, eliminating the Spring Boot container for this path entirely.
 
