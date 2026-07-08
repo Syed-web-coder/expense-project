@@ -1,0 +1,32 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /merchants/{merchantId}",
+  "rawPath": "/merchants/mer_synth_001",
+  "rawQueryString": "",
+  "headers": {
+    "accept": "application/json",
+    "x-correlation-id": "local-smoke-corr-1"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "local-api",
+    "domainName": "localhost",
+    "domainPrefix": "local",
+    "http": {
+      "method": "GET",
+      "path": "/merchants/mer_synth_001",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "127.0.0.1",
+      "userAgent": "curl/8.7.1"
+    },
+    "requestId": "local-smoke-req-1",
+    "routeKey": "GET /merchants/{merchantId}",
+    "stage": "$default",
+    "time": "07/Jul/2026:00:00:00 +0000",
+    "timeEpoch": 1751846400000
+  },
+  "pathParameters": {
+    "merchantId": "mer_synth_001"
+  },
+  "isBase64Encoded": false
+}
