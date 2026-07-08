@@ -22,6 +22,8 @@ public final class MerchantLookupHandler
 
     private static final Logger LOG = LoggerFactory.getLogger(MerchantLookupHandler.class);
     private static final String TABLE = System.getenv("MERCHANTS_TABLE");
+    private static final String FUNCTION_NAME =
+            Optional.ofNullable(System.getenv("AWS_LAMBDA_FUNCTION_NAME")).orElse("local");
     private static final DynamoDbClient DYNAMO = DynamoDbClient.create();
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -46,12 +48,14 @@ public final class MerchantLookupHandler
         Optional<MerchantRecord> found = loadFromDynamo(merchantId);
         if (found.isEmpty()) {
             LOG.info("correlationId={} merchantId={} not found", correlationId, merchantId);
+            emitEmf("MerchantNotFound", 1);
             return errorResponse(404, "Merchant not found: " + merchantId, correlationId);
         }
 
         try {
             String body = MAPPER.writeValueAsString(found.get());
             LOG.info("correlationId={} merchantId={} found", correlationId, merchantId);
+            emitEmf("MerchantLookupSuccess", 1);
             return APIGatewayV2HTTPResponse.builder()
                     .withStatusCode(200)
                     .withHeaders(Map.of(
@@ -75,6 +79,16 @@ public final class MerchantLookupHandler
             return Optional.empty();
         }
         return Optional.of(MerchantRecord.fromItem(response.item()));
+    }
+
+    private static void emitEmf(String metricName, int value) {
+        long ts = System.currentTimeMillis();
+        // Hand-written EMF JSON — no extra dependency; Lambda log agent extracts metrics from it.
+        System.out.printf(
+            "{\"_aws\":{\"Timestamp\":%d,\"CloudWatchMetrics\":[{\"Namespace\":\"ExpenseDev\"," +
+            "\"Dimensions\":[[\"FunctionName\"]],\"Metrics\":[{\"Name\":\"%s\",\"Unit\":\"Count\"}]}]}," +
+            "\"FunctionName\":\"%s\",\"%s\":%d}%n",
+            ts, metricName, FUNCTION_NAME, metricName, value);
     }
 
     private static APIGatewayV2HTTPResponse errorResponse(int statusCode, String message,
