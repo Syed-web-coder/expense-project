@@ -44,11 +44,15 @@ jobs:
 
       - name: mvn test
         run: mvn test
+        env:
+          AWS_REGION: us-east-1
 
       - name: SAM build
         run: sam build
 
       - name: SAM local invoke (prove handler loads)
+        env:
+          AWS_REGION: us-east-1
         run: |
           OUTPUT=$(sam local invoke MerchantLookupFunction \
             --event events/get-merchant.json \
