@@ -23,6 +23,14 @@ repositories {
 }
 
 dependencies {
+    // AWS SDK v2, for the W5D4 Lambda handler (DynamoDB) — BOM keeps all
+    // software.amazon.awssdk modules on matching, compatible versions.
+    implementation platform('software.amazon.awssdk:bom:2.47.1')
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'com.amazonaws:aws-lambda-java-core:1.4.0'
+    implementation 'com.amazonaws:aws-lambda-java-events:3.11.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter:2.10.0'
     implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-kafka-2.7:2.10.0-alpha'
