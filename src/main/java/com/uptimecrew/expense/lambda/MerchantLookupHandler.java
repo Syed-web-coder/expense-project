@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
@@ -24,7 +25,11 @@ public final class MerchantLookupHandler
     private static final String TABLE = System.getenv("MERCHANTS_TABLE");
     private static final String FUNCTION_NAME =
             Optional.ofNullable(System.getenv("AWS_LAMBDA_FUNCTION_NAME")).orElse("local");
-    private static final DynamoDbClient DYNAMO = DynamoDbClient.create();
+    // Explicit region: avoids AWS SDK's region-provider chain, which has
+    // nothing to resolve in CI/local test runs (no AWS_REGION env var there).
+    // Real Lambda auto-injects AWS_REGION, so this is a safe override either way.
+    private static final DynamoDbClient DYNAMO =
+            DynamoDbClient.builder().region(Region.US_EAST_1).build();
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
