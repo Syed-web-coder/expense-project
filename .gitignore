@@ -8,3 +8,14 @@ envs/
 manifests/*.local.yaml
 pod-logs.txt
 .k3d/
+
+# SAM / serverless
+.aws-sam/
+samconfig.toml
+events/*.local.json
+/tmp/sam-smoke-body
+target/
+
+# downloaded installers
+AWSCLIV2.msi
+maven.zip
