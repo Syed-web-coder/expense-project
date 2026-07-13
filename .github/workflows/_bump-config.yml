@@ -1,0 +1,64 @@
+# .github/workflows/_bump-config.yml
+# Reusable workflow: bumps overlays/dev/kustomization.yaml's image
+# tag in the expense-config GitOps repo to the freshly-built SHA.
+# Called from ci.yml's call-build-and-push job, after the image has
+# already passed Trivy and been pushed to ECR -- never before.
+#
+# expense-project needs NO cluster credentials for this. The only
+# secret in play is GITOPS_REPO_TOKEN: a fine-grained PAT scoped to
+# expense-config alone, Contents: Read and write, nothing else.
+name: _bump-config
+
+on:
+  workflow_call:
+    inputs:
+      image-sha:
+        required: true
+        type: string
+    secrets:
+      GITOPS_REPO_TOKEN:
+        required: true
+
+jobs:
+  bump-dev-image-tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read   # this repo; expense-config write goes via the PAT, not GITHUB_TOKEN
+    steps:
+      - name: Checkout expense-config
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          repository: NishiS0205/expense-config
+          token:      ${{ secrets.GITOPS_REPO_TOKEN }}
+          fetch-depth: 1
+
+      - name: Bump dev overlay image tag
+        run: |
+          set -euo pipefail
+          FILE=overlays/dev/kustomization.yaml
+          NEW_TAG="${{ inputs.image-sha }}"
+
+          # Guard: the SHA must actually look like a git SHA before
+          # we let sed loose on it -- a malformed input here would
+          # silently corrupt the overlay's YAML on every future run.
+          if [[ ! "$NEW_TAG" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "::error::image-sha must be a 40-char git SHA, got: $NEW_TAG"
+            exit 1
+          fi
+
+          sed -i -E "s/newTag:  [a-f0-9]{40}/newTag:  ${NEW_TAG}/" "$FILE"
+          grep newTag "$FILE"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name  "expense-project-ci[bot]"
+          git config user.email "ci@expense-project.invalid"
+          git add overlays/dev/kustomization.yaml
+          if git diff --cached --quiet; then
+            echo "No change -- image tag already at ${{ inputs.image-sha }}"
+            exit 0
+          fi
+          git commit -m "chore(dev): bump expense-api image to ${{ inputs.image-sha }}"
+          git push
