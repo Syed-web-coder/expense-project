@@ -5,10 +5,11 @@ import com.uptimecrew.expense.repository.MerchantRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
@@ -42,21 +43,22 @@ public final class MerchantLookupService {
                 .register(registry);
     }
 
+    @WithSpan("merchant.repo.find_by_id")
     @Transactional(readOnly = true)
-    public Optional<MerchantEntity> findById(String id) {
-        Objects.requireNonNull(id, "id");
+    public Optional<MerchantEntity> findById(@SpanAttribute("merchant.id") String merchantId) {
+        Objects.requireNonNull(merchantId, "id");
         merchantLookups.increment();
         Timer.Sample sample = Timer.start();
         try {
-            Optional<MerchantEntity> result = repository.findById(id);
+            Optional<MerchantEntity> result = repository.findById(merchantId);
             if (result.isEmpty()) {
                 merchantNotFound.increment();
-                LOG.info("merchant not found id={}", id);
+                LOG.info("merchant not found id={}", merchantId);
             } else {
                 if (result.get().getMccCode() != null) {
                     businessCounter.increment();
                 }
-                LOG.info("merchant found id={} mccCode={}", id, result.get().getMccCode());
+                LOG.info("merchant found id={} mccCode={}", merchantId, result.get().getMccCode());
             }
             return result;
         } finally {
