@@ -19,3 +19,8 @@ target/
 # downloaded installers
 AWSCLIV2.msi
 maven.zip
+
+# Observability artefacts (W5 D5)
+.grafana/exported/
+sloth-out/
+/tmp/observability-smoke-*

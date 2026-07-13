@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: expense-api-routing
+  namespace: expense-dev
+  labels:
+    release: kube-prometheus-stack
+    team: expense
+spec:
+  route:
+    receiver: expense-default
+    groupBy: [alertname, slo]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+    matchers:
+      - { name: team, value: expense }
+    routes:
+      - receiver: expense-pager
+        matchers:
+          - { name: severity, value: page }
+  receivers:
+    - name: expense-default
+      webhookConfigs:
+        - url: https://hooks.example.internal/expense/tickets
+    - name: expense-pager
+      webhookConfigs:
+        - url: https://hooks.example.internal/expense/pager

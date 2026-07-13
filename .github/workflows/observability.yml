@@ -1,0 +1,34 @@
+name: observability-gate
+on:
+  pull_request:
+    paths:
+      - 'slo/**'
+      - 'manifests/observability/**'
+      - '.grafana/dashboards/**'
+jobs:
+  drift-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install sloth
+        run: |
+          curl -sL https://github.com/slok/sloth/releases/download/v0.11.0/sloth-linux-amd64 -o /usr/local/bin/sloth
+          chmod +x /usr/local/bin/sloth
+      - name: Regenerate PrometheusRule and check for drift
+        run: |
+          sloth generate -i slo/expense-api.sloth.yaml -o /tmp/regen.yaml
+          diff /tmp/regen.yaml manifests/observability/expense-api-prometheusrule.yaml
+      - name: Validate PrometheusRule with promtool
+        run: |
+          docker run --rm -i prom/prometheus:v2.54.0 promtool check rules /dev/stdin \
+            < manifests/observability/expense-api-prometheusrule.yaml
+      - name: Check dashboard schemaVersion and uid uniqueness
+        run: |
+          for f in .grafana/dashboards/*.json; do
+            version=$(jq '.schemaVersion' "$f")
+            [ "$version" = "39" ] || { echo "ERROR: $f schemaVersion is $version, expected 39"; exit 1; }
+          done
+          uids=$(jq -r '.uid' .grafana/dashboards/*.json | sort)
+          dupes=$(echo "$uids" | uniq -d)
+          [ -z "$dupes" ] || { echo "ERROR: duplicate dashboard UIDs: $dupes"; exit 1; }
+          echo "All dashboard checks passed."

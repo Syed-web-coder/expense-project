@@ -1,0 +1,64 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: expense-api-slo
+  namespace: expense-dev
+  labels:
+    release: kube-prometheus-stack
+    team: expense
+spec:
+  groups:
+    - name: expense-api-slo-recording
+      interval: 30s
+      rules:
+        - record: slo:sli_error:ratio_rate5m
+          expr: |
+            1 - (
+              sum(rate(http_server_requests_seconds_bucket{app="expense-api",uri="/merchants/{merchantId}",status!~"5..",le="0.5"}[5m]))
+              /
+              sum(rate(http_server_requests_seconds_count{app="expense-api",uri="/merchants/{merchantId}",status!~"5.."}[5m]))
+            )
+          labels: { service: "expense-api", slo: "expense-api-latency" }
+        - record: slo:sli_error:ratio_rate1h
+          expr: |
+            1 - (
+              sum(rate(http_server_requests_seconds_bucket{app="expense-api",uri="/merchants/{merchantId}",status!~"5..",le="0.5"}[1h]))
+              /
+              sum(rate(http_server_requests_seconds_count{app="expense-api",uri="/merchants/{merchantId}",status!~"5.."}[1h]))
+            )
+          labels: { service: "expense-api", slo: "expense-api-latency" }
+        - record: slo:sli_error:ratio_rate6h
+          expr: |
+            1 - (
+              sum(rate(http_server_requests_seconds_bucket{app="expense-api",uri="/merchants/{merchantId}",status!~"5..",le="0.5"}[6h]))
+              /
+              sum(rate(http_server_requests_seconds_count{app="expense-api",uri="/merchants/{merchantId}",status!~"5.."}[6h]))
+            )
+          labels: { service: "expense-api", slo: "expense-api-latency" }
+    - name: expense-api-slo-alerts
+      rules:
+        - alert: expense-apiLatencySLOBurnFast
+          expr: |
+            slo:sli_error:ratio_rate5m > (14.4 * 0.01)
+            and
+            slo:sli_error:ratio_rate1h > (14.4 * 0.01)
+          labels:
+            severity: page
+            team: expense
+            slo: "expense-api-latency"
+          annotations:
+            runbook_url: "https://runbooks.example.internal/expense-api/latency-slo-burn"
+            summary: "expense-api burning latency budget fast (1h window)"
+        - alert: expense-apiLatencySLOBurnSlow
+          expr: |
+            slo:sli_error:ratio_rate6h > (6.0 * 0.01)
+            and
+            slo:sli_error:ratio_rate1h > (6.0 * 0.01)
+          for: 30m
+          labels:
+            severity: ticket
+            team: expense
+            slo: "expense-api-latency"
+          annotations:
+            runbook_url: "https://runbooks.example.internal/expense-api/latency-slo-burn"
+            summary: "expense-api burning latency budget slowly (6h window)"
