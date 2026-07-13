@@ -128,3 +128,59 @@ immediately after confirming.
 Applied a scratch `expense-api-rogue` Application with
 `spec.destination.namespace: kube-system` (not in the project's
 allowed destinations). Rejected with:
+
+## Task 4 — Notifications + drift verification
+
+### Slack integration
+
+Argo CD Notifications wired to a Slack app ("Argo CD Notifications")
+in workspace "Uptime Crew Practice", channel `#expense-deploys`.
+Triggers configured: `on-sync-failed`, `on-health-degraded`.
+`on-sync-succeeded` deliberately omitted (see comment in
+`argocd-system/notifications-cm.yaml` — alert on bad outcomes only,
+avoid deploy-firehose muting).
+
+**Real bug found: Incoming Webhook vs. Bot Token.** Argo CD's `slack:`
+notification service expects a **Bot User OAuth Token** (`xoxb-...`)
+with `chat:write` scope, not a Slack Incoming Webhook URL
+(`https://hooks.slack.com/services/...`). Using a webhook URL as the
+`slack-token` secret value produces `invalid_auth` on every delivery
+attempt — the two are different Slack authentication mechanisms, and
+nothing in the failure message makes that obvious. Fixed by
+generating a proper Bot Token via OAuth & Permissions → Bot Token
+Scopes → `chat:write`, then reinstalling the app to the workspace.
+
+**Second bug: bot not in channel.** Even with a valid Bot Token,
+delivery failed with `not_in_channel` until the bot was explicitly
+invited to `#expense-deploys` (`/invite @Argo CD Notifications`) —
+a valid token alone isn't sufficient; the bot user still needs
+channel membership to post.
+
+### `on-sync-failed` / `on-health-degraded` verification
+
+Attempted to verify `on-sync-failed` via a deliberately malformed
+`overlays/dev/kustomization.yaml` (invalid YAML). This did NOT
+trigger `on-sync-failed` — confirmed via
+`argocd-notifications-controller` logs showing
+`Trigger 'on-sync-failed' FAILED` (condition not met) on every
+evaluation. Root cause: a YAML render error prevents Argo CD from
+generating a target manifest at all, so no sync *operation* is ever
+attempted -- `operationState.phase` (what `on-sync-failed`'s `when`
+clause checks) never gets set. The render error surfaces as a
+`ComparisonError` condition instead, a different signal.
+
+`on-health-degraded` DID fire and deliver correctly to Slack for
+`expense-api-staging`/`expense-api-prod` (unrelated to the YAML
+test — a byproduct of the known staging/prod database gap; see
+above). This is what actually confirmed end-to-end Slack delivery.
+
+Reverted the deliberate YAML break immediately after confirming.
+
+### `selfHeal` verification
+
+Manually scaled `expense-api` in `expense-dev` from 1 to 5 replicas
+via `kubectl scale` (bypassing Git). `argocd-application-controller`
+logs show: sync status flipped `Synced -> OutOfSync` within ~15s of
+the drift, followed by an automatically `Initialized new operation`
+(`SelfHealAttemptsCount:5`, targeting `Deployment expense-api`) which
+reverted the replica count back to 1 -- no manual sync triggered.
