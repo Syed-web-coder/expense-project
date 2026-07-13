@@ -1,0 +1,30 @@
+# ConfigMap 1 — dashboard JSON is NOT embedded here; it is injected at apply
+# time by scripts/observability-apply.sh via:
+# kubectl create configmap --from-file=expense-api-red.json=.grafana/dashboards/expense-api-red.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: expense-api-grafana-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: expense-api
+data: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provisioning
+  namespace: observability
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: capstone-dashboards
+        folder: "Capstone"
+        type: file
+        disableDeletion: true
+        allowUiUpdates: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
