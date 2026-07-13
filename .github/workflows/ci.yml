@@ -50,6 +50,7 @@ jobs:
     permissions:
       contents: read
       id-token: write     # required to mint the OIDC token for AWS STS
+    secrets: inherit      # threads GITOPS_REPO_TOKEN down to _bump-config.yml
     with:
       app-name:   expense-api
       image-name: uptimecrew/expense-api
