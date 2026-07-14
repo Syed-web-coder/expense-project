@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: expense-api
+  namespace: expense-dev
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/name: expense-api
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: expense-api
+  namespaceSelector:
+    matchNames:
+    - expense-dev
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 15s
+    scrapeTimeout: 10s
+    metricRelabelings:
+    # Drop noisy exception-labelled http_server_requests_seconds_* series.
+    # Micrometer tags non-2xx exceptions; those create high cardinality without
+    # actionable signal — keep the aggregate, drop the per-exception breakdown.
+    - sourceLabels: [__name__, exception]
+      separator: ";"
+      regex: 'http_server_requests_seconds.*;.+'
+      action: drop
