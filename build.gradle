@@ -127,14 +127,23 @@ dependencyManagement {
     // win against io.spring.dependency-management's own resolution --
     // these have to go through this plugin's override mechanism
     // instead. Discovered by testing: jackson-databind, commons-
-    // fileupload, kafka-clients, and tomcat-embed-core all silently
-    // kept their old (vulnerable) versions under a plain force, while
-    // netty/commons-io/bouncycastle (not Spring-BOM-managed) took the
-    // force correctly.
+    // fileupload, and tomcat-embed-core all silently kept their old
+    // (vulnerable) versions under a plain force, while netty/commons-io/
+    // bouncycastle (not Spring-BOM-managed) took the force correctly.
+    //
+    // kafka-clients (CVE-2026-35554) deliberately NOT overridden here:
+    // forcing it to 3.9.2 breaks OrderEventDay3Lab's @EmbeddedKafka
+    // tests with NoSuchMethodError at SocketServer.scala -- the Kafka
+    // *broker* jars (kafka_2.13, kafka-server-common) that
+    // spring-kafka-test's embedded broker relies on stay at 3.8.1
+    // regardless, and a client/broker version split breaks the
+    // embedded broker at test time. Syncing the whole Kafka jar
+    // family is real work, not a mechanical bump -- left for the
+    // same follow-up as spring-kafka's own CVE (both are tied to
+    // the same underlying Kafka version ceiling).
     dependencies {
         dependency 'com.fasterxml.jackson.core:jackson-databind:2.18.8'
         dependency 'commons-fileupload:commons-fileupload:1.6.0'
-        dependency 'org.apache.kafka:kafka-clients:3.9.2'
         dependency 'org.apache.tomcat.embed:tomcat-embed-core:10.1.55'
     }
 }
