@@ -16,7 +16,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
-public final class MerchantLookupService {
+public class MerchantLookupService {
 
     private static final Logger LOG = LoggerFactory.getLogger(MerchantLookupService.class);
 

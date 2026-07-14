@@ -41,7 +41,7 @@ spec:
         fsGroup:      65532
       containers:
       - name:  expense-api
-        image: uptimecrew/expense-api:0.1.0
+        image: uptimecrew/expense-api:0.2.0-obs
         imagePullPolicy: IfNotPresent
         ports:
         - { name: http, containerPort: 8080 }
