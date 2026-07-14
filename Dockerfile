@@ -8,7 +8,7 @@
 #     -t uptimecrew/expense-api:0.1.0 .
 
 # -------- 1. BUILD STAGE --------
-FROM eclipse-temurin:21-jdk-jammy@sha256:801b7e1a9c4befaf82bf9a2a58025ef43a7694bbc84779187ad0524d84742772 AS builder
+FROM eclipse-temurin:21-jdk-jammy@sha256:9d8dcf999b0bce2453e913823595a5ff2a4e8e9e5d5241b45280d0ff069818ec AS builder
 WORKDIR /workspace
 
 COPY gradlew gradlew.bat ./
@@ -26,13 +26,13 @@ RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
     ./gradlew --no-daemon bootJar -x test
 
 # -------- 2. EXTRACT STAGE --------
-FROM eclipse-temurin:21-jre-jammy@sha256:199aebeb3adcde4910695cdebfe782ada38dadb6cc8013159b58d3724451befd AS extractor
+FROM eclipse-temurin:21-jre-jammy@sha256:d63bd8d9b171999cbed8576f2c76e874dd4856791a358536e5c4d407e77edc13 AS extractor
 WORKDIR /extract
 COPY --from=builder /workspace/build/libs/expense-tracking-0.1.0-SNAPSHOT.jar app.jar
 RUN java -Djarmode=layertools -jar app.jar extract --destination .
 
 # -------- 3. RUNTIME STAGE --------
-FROM eclipse-temurin:21-jre-jammy@sha256:199aebeb3adcde4910695cdebfe782ada38dadb6cc8013159b58d3724451befd AS runtime
+FROM eclipse-temurin:21-jre-jammy@sha256:d63bd8d9b171999cbed8576f2c76e874dd4856791a358536e5c4d407e77edc13 AS runtime
 
 ARG APP_VERSION=0.0.0
 ARG GIT_SHA=unset
