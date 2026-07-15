@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "Merchant": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "country": {
+          "title": "Country",
+          "type": "string"
+        },
+        "merchant_id": {
+          "title": "Merchant Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "merchant_id",
+        "name",
+        "category",
+        "country"
+      ],
+      "title": "Merchant",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "amount_cents": {
+      "exclusiveMinimum": 0,
+      "title": "Amount Cents",
+      "type": "integer"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "merchant": {
+      "$ref": "#/$defs/Merchant"
+    },
+    "tenant_id": {
+      "title": "Tenant Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "merchant",
+    "amount_cents",
+    "description",
+    "tenant_id"
+  ],
+  "title": "DeductionClassifyRequest",
+  "type": "object"
+}
