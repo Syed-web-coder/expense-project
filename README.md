@@ -480,4 +480,7 @@ sam delete --stack-name expense-lambda-sandbox --region us-east-1 --no-prompts
 
 `sam delete` removes the CloudFormation stack, Lambda function, API Gateway, DynamoDB table, log group, and alarm. The S3 bucket created by `--resolve-s3` is **not** deleted automatically; remove it via the console or `aws s3 rb s3://<bucket> --force` if needed.
 
+## Week 6 Day 3
+AWS substrate provisioned via CloudFormation (4 stacks: VPC, RDS, S3, IAM bootstrap). See [expense-config/cfn/](https://github.com/NishiS0205/expense-config/tree/main/cfn) and [INFRA.md](expense-api/INFRA.md).
+
 

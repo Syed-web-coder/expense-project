@@ -112,3 +112,5 @@ comparison. The two review criteria the spec calls out (unpinned
 neither issue is present in `ci.yml`, `_build-and-push.yml`,
 `deploy-prod.yml`, or `action.yml`; all actions are SHA-pinned and
 the only cache mechanism used is `setup-java`'s `cache: gradle`.
+## AWS Substrate
+CloudFormation stacks (bootstrap, network, artifacts, app) live in [uptimecrew/expense-config/cfn/](https://github.com/NishiS0205/expense-config/tree/main/cfn). See [INFRA.md](../INFRA.md) for stack layout and deploy order.
