@@ -541,4 +541,6 @@ src/main/resources/logback-spring.xml Structured JSON log config (prod profile)
 ## Week 6 Day 3
 AWS substrate provisioned via CloudFormation (4 stacks: VPC, RDS, S3, IAM bootstrap). See [expense-config/cfn/](https://github.com/NishiS0205/expense-config/tree/main/cfn) and [INFRA.md](expense-api/INFRA.md).
 
+## Week 7 Day 1
+Python AI sidecar [`expense-ai/`](expense-ai/) bootstrapped with uv (Python 3.12, `src/` layout, hatchling build); Pydantic v2 boundary models (`Merchant` with ISO-2 country validator, `DeductionClassifyRequest`, `DeductionClassifyResult` with model-validator), frozen slotted dataclasses for value types, pydantic-settings config with `SecretStr` API key, and typed embedding utilities (`cosine_similarity`, `top_k`); 44 tests at 100 % coverage running under `mypy --strict` and ruff (E, F, I, UP, B); embeddings notebook (`all-mpnet-base-v2`: PCA scatter, cosine heatmap, top-3 retrieval) executable headless via `MPLBACKEND=Agg`; paths-filtered `python-ci` workflow with uv caching and HuggingFace model cache. See [`expense-ai/README.md`](expense-ai/README.md) for setup and full details.
 
