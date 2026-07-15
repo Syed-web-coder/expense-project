@@ -538,4 +538,7 @@ src/main/resources/logback-spring.xml Structured JSON log config (prod profile)
 - **Postgres schema `expense` must exist before app starts** — `CREATE SCHEMA IF NOT EXISTS expense;` must run as part of DB init or the JPA DDL step fails.
 - **Loki 6.6.4 SingleBinary mode quirks** — requires `--set loki.useTestSchema=true` and explicit replica counts; omitting either causes the Helm chart to reject the values or the pod to crash-loop.
 
+## Week 6 Day 3
+AWS substrate provisioned via CloudFormation (4 stacks: VPC, RDS, S3, IAM bootstrap). See [expense-config/cfn/](https://github.com/NishiS0205/expense-config/tree/main/cfn) and [INFRA.md](expense-api/INFRA.md).
+
 
