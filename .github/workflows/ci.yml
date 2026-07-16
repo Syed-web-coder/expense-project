@@ -32,6 +32,14 @@ jobs:
 
       - name: Gradle build + tests
         run: ./gradlew --no-daemon build
+      - name: Guard against HINCRBYFLOAT in cost package
+        run: |
+          if grep -rIn 'HINCRBYFLOAT\|hincrByFloat' src/main/java/com/uptimecrew/expense/llmproxy/cost/; then
+            echo "::error::HINCRBYFLOAT/hincrByFloat found in cost package -- costs must use integer HINCRBY only"
+            exit 1
+          fi
+          echo "clean: no HINCRBYFLOAT/hincrByFloat in cost package"
+
 
       - name: Upload test reports on failure
         if: failure()
