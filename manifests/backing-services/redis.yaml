@@ -1,0 +1,58 @@
+# Dev-only Redis backing service for k3d.
+# Storage is emptyDir — no persistence, acceptable for local dev.
+# No auth; the app connects via host/port from the ConfigMap:
+#   SPRING_DATA_REDIS_HOST: redis.expense-dev.svc.cluster.local
+#   SPRING_DATA_REDIS_PORT: 6379
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: expense-dev
+  labels:
+    app.kubernetes.io/name:      redis
+    app.kubernetes.io/part-of:   expense
+    app.kubernetes.io/component: backing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name:      redis
+        app.kubernetes.io/part-of:   expense
+        app.kubernetes.io/component: backing-service
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - { name: redis, containerPort: 6379 }
+        resources:
+          requests: { cpu: 50m,  memory: 64Mi  }
+          limits:   { cpu: 200m, memory: 128Mi }
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: expense-dev
+  labels:
+    app.kubernetes.io/name:      redis
+    app.kubernetes.io/part-of:   expense
+    app.kubernetes.io/component: backing-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379

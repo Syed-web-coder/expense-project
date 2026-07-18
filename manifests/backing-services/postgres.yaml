@@ -1,0 +1,68 @@
+# Dev-only Postgres backing service for k3d.
+# Storage is emptyDir — data is lost on pod restart, which is fine for local dev.
+# POSTGRES_PASSWORD is sourced from the SAME Secret key the app reads
+# (SPRING_DATASOURCE_PASSWORD in expense-api-secrets), so the DB and the
+# app always have identical credentials with no manual seeding.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: expense-dev
+  labels:
+    app.kubernetes.io/name:      postgres
+    app.kubernetes.io/part-of:   expense
+    app.kubernetes.io/component: backing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name:      postgres
+        app.kubernetes.io/part-of:   expense
+        app.kubernetes.io/component: backing-service
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16-alpine
+        ports:
+        - { name: postgres, containerPort: 5432 }
+        env:
+        - name: POSTGRES_USER
+          value: expense_dev
+        - name: POSTGRES_DB
+          value: expense_dev
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: expense-api-secrets
+              key: SPRING_DATASOURCE_PASSWORD
+        resources:
+          requests: { cpu: 100m, memory: 128Mi }
+          limits:   { cpu: 500m, memory: 512Mi }
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: expense-dev
+  labels:
+    app.kubernetes.io/name:      postgres
+    app.kubernetes.io/part-of:   expense
+    app.kubernetes.io/component: backing-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432

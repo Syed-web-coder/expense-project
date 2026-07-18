@@ -68,10 +68,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,prometheus,info
   endpoint:
     health:
-      show-details: always
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,200ms,300ms,500ms,800ms,1200ms,2000ms
+    tags:
+      app: expense-api
 springdoc:
   api-docs:
     path: /v3/api-docs

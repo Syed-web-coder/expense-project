@@ -1,0 +1,27 @@
+version: "prometheus/v1"
+service: "expense-api"
+labels:
+  team: "expense"
+  release: "kube-prometheus-stack"
+slos:
+  - name: "expense-api-latency"
+    objective: 99.0
+    description: "99% of GET /merchants/{merchantId} responses under 500ms over 30d."
+    sli:
+      events:
+        error_query: |
+          sum(rate(http_server_requests_seconds_bucket{app="expense-api",uri="/merchants/{merchantId}",status!~"5..",le="0.5"}[{{.window}}]))
+        total_query: |
+          sum(rate(http_server_requests_seconds_count{app="expense-api",uri="/merchants/{merchantId}",status!~"5.."}[{{.window}}]))
+    alerting:
+      name: "expense-apiLatencySLOBurn"
+      labels:
+        category: "latency"
+        team: "expense"
+      annotations:
+        runbook_url: "https://runbooks.example.internal/expense-api/latency-slo-burn"
+        summary: "expense-api GET /merchants/{merchantId} latency SLO is burning error budget."
+      page_alert:
+        labels: { severity: "page" }
+      ticket_alert:
+        labels: { severity: "ticket" }
