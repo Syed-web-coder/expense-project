@@ -60,3 +60,23 @@ jobs:
             --execute notebooks/embeddings_intro.ipynb \
             --output executed.ipynb \
             --ExecutePreprocessor.timeout=600
+
+      - name: GX checkpoint (Testcontainers)
+        run: uv run pytest -v tests/test_great_expectations_suite.py
+
+      - name: RAGAS thresholds
+        env:
+          EXPENSE_AI_ANTHROPIC_API_KEY: ${{ secrets.EXPENSE_AI_ANTHROPIC_API_KEY }}
+        run: uv run pytest -v tests/test_ragas_thresholds.py
+
+      - name: Set LangSmith key flag
+        run: |
+          echo "HAS_LS_KEY=${{ secrets.EXPENSE_AI_LANGSMITH_API_KEY != '' }}" >> $GITHUB_ENV
+
+      - name: LangSmith run visibility
+        if: env.HAS_LS_KEY == 'true'
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.EXPENSE_AI_LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: expense-ai-dev-ci
+          LANGSMITH_TRACING: "true"
+        run: uv run python -m expense_ai.scripts.assert_langsmith_run_visible
