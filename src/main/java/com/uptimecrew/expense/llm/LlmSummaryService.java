@@ -23,6 +23,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.core.io.ClassPathResource;
+import com.uptimecrew.expense.llmproxy.cost.CallContext;
+import com.uptimecrew.expense.llmproxy.cost.CostObserver;
+import com.uptimecrew.expense.llmproxy.cost.UpstreamResponse;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 
 // Task 3 (W3 D5): wraps the LLM call in a manual io.opentelemetry.api.trace.Span
@@ -48,16 +52,19 @@ public class LlmSummaryService {
     private final JsonSchema schema;
     private final Tracer tracer;
     private final String configuredModel;
+    private final CostObserver costMiddleware;
 
     public LlmSummaryService(ChatClient.Builder chatClientBuilder,
                              MerchantReadModelRepository readModelRepository,
                              ObjectMapper mapper,
-                             OpenTelemetry openTelemetry) {
+                             OpenTelemetry openTelemetry,
+                             CostObserver costMiddleware) {
         this.chatClient = chatClientBuilder.build();
         this.readModelRepository = readModelRepository;
         this.mapper = mapper;
         this.tracer = openTelemetry.getTracer("com.uptimecrew.expense.llm");
         this.configuredModel = "claude-sonnet-4-5";
+        this.costMiddleware = costMiddleware;
         try (InputStream in = new ClassPathResource(
                 "schemas/MerchantSummary.schema.json").getInputStream()) {
             this.schema = JsonSchemaFactory
@@ -83,6 +90,7 @@ public class LlmSummaryService {
                 .setAttribute(ATTR_AGGREGATE_ID, id)
                 .startSpan();
         try (Scope ignored = span.makeCurrent()) {
+            Instant callStart = Instant.now();
             ChatResponse response = chatClient.prompt().user(prompt).call().chatResponse();
 
             String content = response.getResult().getOutput().getText();
@@ -94,6 +102,10 @@ public class LlmSummaryService {
             long completionTokens = safeLong(response.getMetadata().getUsage().getCompletionTokens());
             span.setAttribute(ATTR_TOKENS_IN, promptTokens);
             span.setAttribute(ATTR_TOKENS_OUT, completionTokens);
+            long latencyMs = java.time.Duration.between(callStart, Instant.now()).toMillis();
+            costMiddleware.observe(
+                    CallContext.defaultTenant(callStart),
+                    new UpstreamResponse(configuredModel, promptTokens, completionTokens, latencyMs, true));
 
             MerchantSummary result = parsed == null ? null : new MerchantSummary(
                     parsed.mccCode(), parsed.totalSpend(), parsed.transactionCount(),
