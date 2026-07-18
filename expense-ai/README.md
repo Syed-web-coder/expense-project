@@ -115,3 +115,48 @@ Steps (all run with `working-directory: expense-ai`):
 8. `uv run pytest -v --cov=src --cov-fail-under=85`
 9. `actions/cache@v4` — caches `~/.cache/huggingface` keyed on model name (avoids 420 MB re-download)
 10. Execute notebook with `MPLBACKEND=Agg`
+11. *(W7D2)* `uv run pytest -v tests/test_great_expectations_suite.py` — GX checkpoint via Testcontainers
+12. *(W7D2)* `uv run pytest -v tests/test_ragas_thresholds.py` — skipped when `EXPENSE_AI_ANTHROPIC_API_KEY` is unset
+13. *(W7D2)* `uv run python -m expense_ai.scripts.assert_langsmith_run_visible` — only runs when `EXPENSE_AI_LANGSMITH_API_KEY` is set (fork-safe via `$GITHUB_ENV` flag)
+
+## Week 7 Day 2 additions
+
+### New modules
+
+| Module | Purpose |
+|---|---|
+| `src/expense_ai/corpus.py` | `load_corpus(path)` — reads Parquet/JSONL, deduplicates on `(doc_id, chunk_idx)`, drops rows with `chunk_text` outside [1, 8000] chars; `embed_dataframe(df, model)` — batched MiniLM encode, casts output to `float32` |
+| `src/expense_ai/pgvector_loader.py` | `load_rows(dsn, rows)` — psycopg v3 + `register_vector`, upserts into `doc_chunks` via `ON CONFLICT (doc_id, chunk_idx, model_version) DO UPDATE`, returns row count |
+| `src/expense_ai/rag.py` | `retrieve_chunks(dsn, query, k, tenant_id)` — cosine ANN query against pgvector, decorated with `@traceable(name="expense_ai.retrieve_chunks")` for LangSmith |
+| `src/expense_ai/scripts/assert_langsmith_run_visible.py` | Spins a Testcontainers Postgres, seeds rows, calls `retrieve_chunks`, polls the LangSmith API and exits non-zero if the named run is not found |
+| `sql/V001__doc_chunks.sql` | `doc_chunks` table — `vector(384)` column, HNSW cosine index (`m=16`, `ef_construction=64`), composite unique constraint `(doc_id, chunk_idx, model_version)` |
+
+### New environment variables
+
+Copy `.env.example` to `.env` and fill in the values. The `.gitignore` already excludes `.env`.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `EXPENSE_AI_LANGSMITH_API_KEY` | *(optional)* | LangSmith API key — enables tracing and the visibility check |
+| `EXPENSE_AI_LANGSMITH_PROJECT` | `expense-ai-dev` | LangSmith project name |
+| `EXPENSE_AI_PG_DSN` | *(optional)* | PostgreSQL DSN for `load_rows` / `retrieve_chunks` when not using Testcontainers |
+| `EXPENSE_AI_ANTHROPIC_API_KEY` | *(optional)* | Anthropic API key — required to run the RAGAS threshold test |
+
+### Running the LangSmith visibility check locally
+
+The script spins its own Testcontainers Postgres instance, so Docker must be running. It requires `LANGSMITH_API_KEY` (or `EXPENSE_AI_LANGSMITH_API_KEY`) and `LANGSMITH_TRACING=true`:
+
+```bash
+export LANGSMITH_API_KEY=<your-key>
+export LANGSMITH_PROJECT=expense-ai-dev   # or any project name
+export LANGSMITH_TRACING=true
+uv run python -m expense_ai.scripts.assert_langsmith_run_visible
+```
+
+A successful run prints:
+
+```
+SUCCESS: found 1 run(s) named 'expense_ai.retrieve_chunks' in LangSmith project 'expense-ai-dev'
+```
+
+and exits `0`. If no run is found within the search window it exits `1` with an error message on stderr.
