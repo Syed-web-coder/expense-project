@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uptimecrew.expense.graphql.MerchantSummary;
 import com.uptimecrew.expense.llm.LlmSummaryService;
+import com.uptimecrew.expense.llmproxy.cost.CostObserver;
 import com.uptimecrew.expense.readmodel.MerchantReadModel;
 import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
 import io.opentelemetry.api.OpenTelemetry;
@@ -25,6 +26,9 @@ class LlmSummaryServiceTest {
     @Mock
     MerchantReadModelRepository repo;
 
+    @Mock
+    CostObserver costMiddleware;
+
     @Test
     void summarize_tokenCounts_matchStubValues() {
         when(repo.findById("m1")).thenReturn(Optional.of(
@@ -36,7 +40,8 @@ class LlmSummaryServiceTest {
                         MerchantSummary.Confidence.HIGH)),
                 repo,
                 new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false),
-                OpenTelemetry.noop());
+                OpenTelemetry.noop(),
+                costMiddleware);
 
         MerchantSummary result = service.summarize("m1");
 

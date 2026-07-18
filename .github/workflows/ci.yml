@@ -31,7 +31,21 @@ jobs:
         uses: ./.github/actions/setup-build
 
       - name: Gradle build + tests
+        env:
+          # Safety net: a local Colima+Ryuk timeout was observed during
+          # development (possibly a Colima-VM-specific quirk, not
+          # confirmed to reproduce here) -- CI runners are torn down
+          # after each job anyway, making Ryuk's cleanup role redundant.
+          TESTCONTAINERS_RYUK_DISABLED: "true"
         run: ./gradlew --no-daemon build
+      - name: Guard against HINCRBYFLOAT in cost package
+        run: |
+          if grep -rIn 'HINCRBYFLOAT\|hincrByFloat' src/main/java/com/uptimecrew/expense/llmproxy/cost/; then
+            echo "::error::HINCRBYFLOAT/hincrByFloat found in cost package -- costs must use integer HINCRBY only"
+            exit 1
+          fi
+          echo "clean: no HINCRBYFLOAT/hincrByFloat in cost package"
+
 
       - name: Upload test reports on failure
         if: failure()
