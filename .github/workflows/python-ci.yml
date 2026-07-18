@@ -1,0 +1,62 @@
+name: python-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "expense-ai/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "expense-ai/**"
+
+jobs:
+  python-checks:
+    name: Lint, type-check, test, notebook
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: expense-ai
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check
+
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+      - name: Mypy
+        run: uv run mypy src/ tests/ scripts/
+
+      - name: Pytest with coverage
+        run: uv run pytest -v --cov=src --cov-fail-under=85
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-huggingface-all-mpnet-base-v2
+
+      - name: Execute notebook
+        env:
+          MPLBACKEND: Agg
+        run: |
+          uv run jupyter nbconvert \
+            --to notebook \
+            --execute notebooks/embeddings_intro.ipynb \
+            --output executed.ipynb \
+            --ExecutePreprocessor.timeout=600

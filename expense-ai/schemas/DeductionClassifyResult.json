@@ -1,0 +1,31 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "deductible": {
+      "title": "Deductible",
+      "type": "boolean"
+    },
+    "model_id": {
+      "title": "Model Id",
+      "type": "string"
+    },
+    "rationale": {
+      "title": "Rationale",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deductible",
+    "confidence",
+    "rationale",
+    "model_id"
+  ],
+  "title": "DeductionClassifyResult",
+  "type": "object"
+}
