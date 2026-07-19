@@ -184,3 +184,24 @@ logs show: sync status flipped `Synced -> OutOfSync` within ~15s of
 the drift, followed by an automatically `Initialized new operation`
 (`SelfHealAttemptsCount:5`, targeting `Deployment expense-api`) which
 reverted the replica count back to 1 -- no manual sync triggered.
+
+## argocd-author Skill audit
+
+Per the assignment spec, Task 4 also asks for a review pass using the
+`argocd-author` Claude Skill (an AI-assisted reviewer analogous to
+W6D1's `github-actions-author`). It was not found in this environment:
+
+- `~/.claude/skills/` -- does not exist / empty
+- `.claude/skills/` (repo-local) -- does not exist / empty
+- `find / -iname "*argocd-author*"` -- no matches anywhere on the
+  system
+
+Same as the W6D1 finding: the Skill does not appear to be distributed
+as part of this environment's setup. Flagging this to the Code Coach
+rather than fabricating a comparison. The common Skill quirks the
+spec calls out (leaving `spec.project` unset -- defaults to "default";
+scaffolding an Argo Rollout instead of a plain Deployment) were
+manually checked instead: `argocd/applications/expense-api-dev.yaml`
+and the ApplicationSet template both explicitly set
+`spec.project: expense`, and `base/10-expense-api.deployment.yaml` is
+a plain `apps/v1 Deployment`, not an Argo Rollout.
