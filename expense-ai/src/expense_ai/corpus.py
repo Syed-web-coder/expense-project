@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -13,6 +14,10 @@ EMBEDDING_DIM = 384
 _REQUIRED_COLS = {"doc_id", "chunk_idx", "chunk_text", "tenant_id"}
 
 
+def _empty_metadata() -> dict[str, Any]:
+    return {}
+
+
 @dataclass(frozen=True, slots=True)
 class CorpusRow:
     doc_id: str
@@ -21,6 +26,8 @@ class CorpusRow:
     embedding: NDArray[np.float32]
     model_version: str
     tenant_id: str
+    chunk_metadata: dict[str, Any] = field(default_factory=_empty_metadata)
+    content_hash: str | None = None
 
 
 def load_corpus(path: Path) -> pd.DataFrame:

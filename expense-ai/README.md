@@ -160,3 +160,51 @@ SUCCESS: found 1 run(s) named 'expense_ai.retrieve_chunks' in LangSmith project 
 ```
 
 and exits `0`. If no run is found within the search window it exits `1` with an error message on stderr.
+
+## Week 7 Day 3 additions
+
+### New modules
+
+| Module | Purpose |
+|---|---|
+| `src/expense_ai/chunker.py` | `make_splitter(chunk_size, overlap)` + `chunk_docs(docs)` — LangChain `RecursiveCharacterTextSplitter`, stamps `chunk_id` and `chunk_ordinal` metadata |
+| `src/expense_ai/hybrid.py` | `dense_topk_filtered`, `sparse_topk_fts` (FTS via `websearch_to_tsquery`), `rrf_fuse` (rank-based RRF), `coverage` — all `@traceable` |
+| `src/expense_ai/rerank.py` | `mmr_pick` (greedy MMR, injectable embedder), `bge_rerank` (CrossEncoder, `ThreadPoolExecutor` timeout-and-fallback, `RERANK_TIMEOUT_COUNT`) — all `@traceable` |
+| `src/expense_ai/cache.py` | Epoch-keyed semantic cache over Redis: `_bucket_key` (sha256 of `round(vec*100).int32`), `get_epoch`/`bump_epoch`, `cache_lookup` (with cross-tenant citation defence), `cache_store` |
+| `src/expense_ai/rag.py` | **Extended** — keeps `retrieve_chunks`; adds `retrieve_and_generate(…, anthropic, conn, r)` wiring the full hybrid→MMR→rerank→generate→cache pipeline; all clients injectable for tests |
+| `src/expense_ai/dags/rag_svc_ingest.py` | Airflow 3.x TaskFlow DAG (`expense_ai_ingest`) with five tasks: `load_docs → chunk_docs → embed_chunks → upsert_chunks → bump_cache_epochs`; POSIX-only, guarded by `try/except ImportError` |
+| `sql/V002__rag2_metadata_and_partial_indexes.sql` | Adds `chunk_metadata jsonb`, `content_hash text`, `chunk_tsv tsvector GENERATED ALWAYS AS (to_tsvector(...)) STORED`; GIN indexes on metadata and tsv; per-tenant partial HNSW indexes (`m=24`, `ef_construction=128`) |
+
+### New environment variable
+
+| Variable | Default | Notes |
+|---|---|---|
+| `EXPENSE_AI_REDIS_URL` | `redis://localhost:6379` | Redis DSN for semantic cache and Airflow `bump_cache_epochs` task |
+
+### Feature flags in `retrieve_and_generate`
+
+| Flag | Default | Effect when `False` |
+|---|---|---|
+| `use_hybrid` | `True` | Skip sparse FTS; use dense-only top-60 |
+| `use_mmr` | `True` | Skip MMR; use top-20 from fused list |
+| `use_rerank` | `True` | Skip BGE rerank; use top-6 from diversified list |
+| `use_filter` | `True` | Ignore `metadata_filter`; no `chunk_metadata @>` predicate |
+
+### Running the new tests
+
+```bash
+# Semantic cache (Testcontainers Redis)
+uv run pytest -v tests/test_semantic_cache.py
+
+# Tenant isolation (Testcontainers Postgres)
+uv run pytest -v tests/test_tenant_isolation.py
+
+# retrieve_and_generate integration (fake anthropic + Testcontainers)
+uv run pytest -v tests/test_ragas_gate.py::test_retrieve_and_generate_shapes_and_caches
+
+# RAGAS faithfulness gate (requires EXPENSE_AI_ANTHROPIC_API_KEY)
+EXPENSE_AI_ANTHROPIC_API_KEY=<key> uv run pytest -v -m slow tests/test_ragas_gate.py
+
+# DAG import (Linux/macOS only — skipped on Windows)
+uv run pytest -v tests/test_dag_import.py
+```

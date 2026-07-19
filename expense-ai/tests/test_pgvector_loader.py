@@ -48,8 +48,11 @@ def test_load_100_rows(pg_dsn: str) -> None:
     count = load_rows(pg_dsn, rows)
     assert count == 100
 
+    loaded_ids = list({r.doc_id for r in rows})
     with psycopg.connect(pg_dsn) as conn:
-        result = conn.execute("SELECT COUNT(*) FROM doc_chunks").fetchone()
+        result = conn.execute(
+            "SELECT COUNT(*) FROM doc_chunks WHERE doc_id = ANY(%s)", (loaded_ids,)
+        ).fetchone()
     assert result is not None
     assert result[0] == 100
 
@@ -60,8 +63,11 @@ def test_idempotency(pg_dsn: str) -> None:
     load_rows(pg_dsn, rows)
     load_rows(pg_dsn, rows)
 
+    loaded_ids = list({r.doc_id for r in rows})
     with psycopg.connect(pg_dsn) as conn:
-        result = conn.execute("SELECT COUNT(*) FROM doc_chunks").fetchone()
+        result = conn.execute(
+            "SELECT COUNT(*) FROM doc_chunks WHERE doc_id = ANY(%s)", (loaded_ids,)
+        ).fetchone()
     assert result is not None
     assert result[0] == 100
 
