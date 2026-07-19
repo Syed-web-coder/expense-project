@@ -6,9 +6,14 @@
 // the pgvector project with the extension preinstalled on
 // shared_preload_libraries).
 //
-// This is the first Flyway-managed migration in this project;
-// classpath:db/migration resolves to src/main/resources/db/migration,
-// which currently contains only V1__create_merchant_embeddings.sql.
+// Deliberately NOT under src/main/resources/db/migration --
+// that's Spring Boot's default auto-scanned Flyway location, which
+// EVERY test that boots a Spring context picks up automatically,
+// even tests using a plain (non-pgvector) Postgres container. That
+// caused every other IT to fail with 'extension "vector" is not
+// available' once this migration first merged to main. Moved to
+// classpath:pgvector-migration, a location only this test's
+// explicit Flyway.configure().locations(...) call ever touches.
 // The pre-existing db/V1-V4 scripts at the repo root are a separate,
 // hand-applied schema unrelated to this test.
 //
@@ -61,7 +66,7 @@ final class MerchantEmbeddingsRepoTest {
         // impossible because the schema source is one file.
         Flyway.configure()
               .dataSource(DB.getJdbcUrl(), DB.getUsername(), DB.getPassword())
-              .locations("classpath:db/migration")
+              .locations("classpath:pgvector-migration")
               .load()
               .migrate();
     }

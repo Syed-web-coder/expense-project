@@ -1,0 +1,72 @@
+# .github/workflows/load.yaml
+# TASK 3 (W6D5): k6 SLO threshold gate. Runs on pull_request; exit
+# code maps to the PR check; a breached threshold blocks merge.
+#
+# KNOWN BLOCKER, documented rather than silently hidden: this
+# workflow runs on GitHub-hosted ubuntu-latest, which CANNOT resolve
+# private in-cluster DNS (expense-api.expense-dev.svc.cluster.local
+# is not reachable from the public internet). The assignment
+# reference assumes a self-hosted runner living inside the VPC --
+# setting one up is real, separate infrastructure work (its own IAM
+# role, EC2/Fargate runner, VPC placement) out of scope for this
+# session. This workflow is written correctly and will run once
+# either (a) a self-hosted in-VPC runner exists, or (b) expense-api
+# is exposed via a public/VPN-reachable endpoint for CI to target.
+name: load
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "loadtests/**"
+      - ".github/workflows/load.yaml"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  k6:
+    name: k6 SLO threshold gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Real, existing role from W6D1 -- expense-api-build-push.
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/expense-api-build-push
+          aws-region: us-east-1
+
+      - name: Install k6
+        run: |
+          set -euo pipefail
+          curl -fsSL https://github.com/grafana/k6/releases/download/v0.49.0/k6-v0.49.0-linux-amd64.tar.gz \
+            | tar -xz --strip-components=1
+          chmod +x ./k6
+          ./k6 version
+
+      - name: Resolve dev TARGET
+        run: |
+          # Placeholder -- see file header. Not reachable from this
+          # hosted runner until a self-hosted in-VPC runner or a
+          # public/VPN-reachable endpoint exists.
+          echo "TARGET=http://expense-api.expense-dev.svc.cluster.local:8080" >> "$GITHUB_ENV"
+
+      - name: Run k6 with SLO thresholds
+        run: |
+          ./k6 run \
+            --summary-export=k6-summary.json \
+            loadtests/expense-api-p99.js
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary
+          path: k6-summary.json
+          retention-days: 14
