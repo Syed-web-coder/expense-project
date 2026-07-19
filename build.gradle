@@ -9,7 +9,7 @@ group   = 'com.uptimecrew.expense'
 version = '0.1.0-SNAPSHOT'
 
 ext['testcontainers.version'] = '1.21.4'
-ext['spring-ai.version']      = '1.1.2'
+ext['spring-ai.version']      = '1.1.6'
 
 java {
     toolchain {
@@ -49,7 +49,7 @@ dependencies {
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
     implementation 'io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.5.0'
     runtimeOnly    'org.springframework.boot:spring-boot-starter-jdbc'
-    runtimeOnly    'org.postgresql:postgresql:42.7.3'
+    runtimeOnly    'org.postgresql:postgresql:42.7.11'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     testImplementation platform('org.junit:junit-bom:5.10.2')
@@ -61,7 +61,7 @@ dependencies {
     testImplementation platform('org.testcontainers:testcontainers-bom:1.21.4')
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.postgresql:postgresql:42.7.3'
+    testImplementation 'org.postgresql:postgresql:42.7.11'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     implementation     'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -104,12 +104,58 @@ dependencies {
 
     testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
 }
+
+// Trivy-flagged transitive dependencies, forced to their fixed
+// versions. mcp-core intentionally excluded here -- 0.17.0 -> 1.0.0
+// crosses a major version boundary and needs its own compatibility
+// pass, not a mechanical force. lz4-java also excluded -- forcing it
+// hits a Gradle capability conflict against a historical fork
+// (at.yawk.lz4:lz4-java) that needs its own resolution. See
+// GITOPS.md / this commit message for the full CVE list.
+configurations.all {
+    resolutionStrategy {
+        force 'commons-io:commons-io:2.14.0'
+        force 'org.bouncycastle:bcprov-jdk18on:1.80.2'
+        eachDependency { details ->
+            if (details.requested.group == 'io.netty') {
+                details.useVersion '4.1.135.Final'
+            }
+        }
+    }
+}
+
 dependencyManagement {
     imports {
         mavenBom 'org.springframework.cloud:spring-cloud-dependencies:2023.0.3'
          mavenBom "org.springframework.ai:spring-ai-bom:${ext['spring-ai.version']}"   
  }
-} 
+
+    // Overrides for Trivy-flagged CVEs in dependencies Spring Boot's
+    // own BOM manages. Plain Gradle resolutionStrategy.force does not
+    // win against io.spring.dependency-management's own resolution --
+    // these have to go through this plugin's override mechanism
+    // instead. Discovered by testing: jackson-databind, commons-
+    // fileupload, and tomcat-embed-core all silently kept their old
+    // (vulnerable) versions under a plain force, while netty/commons-io/
+    // bouncycastle (not Spring-BOM-managed) took the force correctly.
+    //
+    // kafka-clients (CVE-2026-35554) deliberately NOT overridden here:
+    // forcing it to 3.9.2 breaks OrderEventDay3Lab's @EmbeddedKafka
+    // tests with NoSuchMethodError at SocketServer.scala -- the Kafka
+    // *broker* jars (kafka_2.13, kafka-server-common) that
+    // spring-kafka-test's embedded broker relies on stay at 3.8.1
+    // regardless, and a client/broker version split breaks the
+    // embedded broker at test time. Syncing the whole Kafka jar
+    // family is real work, not a mechanical bump -- left for the
+    // same follow-up as spring-kafka's own CVE (both are tied to
+    // the same underlying Kafka version ceiling).
+    dependencies {
+        dependency 'com.fasterxml.jackson.core:jackson-databind:2.18.8'
+        dependency 'commons-fileupload:commons-fileupload:1.6.0'
+        dependency 'org.apache.tomcat.embed:tomcat-embed-core:10.1.55'
+    }
+}
+
 
 compileJava {
     options.release = 21
