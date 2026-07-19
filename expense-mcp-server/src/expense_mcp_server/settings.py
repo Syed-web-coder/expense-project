@@ -24,3 +24,7 @@ class Settings(BaseSettings):
     # comes from the Claude Desktop launcher's env; in SSE mode it comes
     # off the incoming Authorization header (see transports/sse.py).
     bearer_jwt: str = Field(default="")
+    # RAG dependencies for rag.retrieve_and_generate (calls expense_ai in-process).
+    postgres_dsn: str = Field(default="", description="psycopg DSN for the pgvector corpus.")
+    redis_url: str = Field(default="redis://localhost:6379")
+    anthropic_api_key: str = Field(default="")

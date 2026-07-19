@@ -46,6 +46,12 @@ async def lifespan(_: FastMCP) -> AsyncIterator[AppCtx]:
         base_url=s.orders_svc_url,
         timeout=httpx.Timeout(s.tool_timeout_default_s, connect=2.0),
     )
+    # NOTE: pg/redis/anthropic clients for rag.retrieve_and_generate are
+    # deliberately NOT opened here. Unlike httpx.AsyncClient (lazy), a
+    # psycopg.connect() call connects immediately and would crash the
+    # whole server at startup if Postgres isn't reachable -- taking down
+    # orders.get_order and llm.chat too, which don't need Postgres at all.
+    # tools/rag.py lazily builds and caches these on first RAG call instead.
     log.info("lifespan.start", orders_svc=s.orders_svc_url)
     try:
         yield AppCtx(http=client, rag_fn=_rag_fn, settings=s)

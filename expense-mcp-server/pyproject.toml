@@ -15,6 +15,9 @@ dependencies = [
     "tenacity>=8.3",
     "langsmith>=0.1.80",
     "structlog>=24.1",       # structured JSON logging on stderr
+    "anthropic>=0.117",      # used directly by tools/rag.py
+    "psycopg[binary]>=3.2",  # used directly by tools/rag.py
+    "redis>=5.0",            # used directly by tools/rag.py
     # The W7 D3 sidecar as a path dependency (read-only library reuse):
     "expense_ai @ {root:uri}/../expense-ai",
 ]
@@ -33,6 +36,15 @@ dev = [
     "respx>=0.21",
     "testcontainers[postgres]>=4.7",
 ]
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+# expense_ai has no py.typed marker (it predates this mypy --strict gate);
+# ignore missing stubs there rather than faking types we don't control.
+module = "expense_ai.*"
+ignore_missing_imports = true
 
 [build-system]
 requires = ["hatchling"]

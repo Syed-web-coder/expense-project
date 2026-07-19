@@ -6,7 +6,7 @@ module-level `mcp` instance before we call mcp.run().
 from __future__ import annotations
 
 from expense_mcp_server.app import mcp
-from expense_mcp_server.tools import _resources, orders  # noqa: F401  (registers decorators)
+from expense_mcp_server.tools import _resources, llm, orders, rag  # noqa: F401  (registers decorators)
 
 
 def main() -> None:

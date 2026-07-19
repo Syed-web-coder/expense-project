@@ -24,7 +24,7 @@ _CORPUS_STATS = {
 
 
 @mcp.resource(uri="expense://catalogue", name="catalogue")
-def catalogue() -> dict:
+def catalogue() -> dict[str, object]:
     return {
         "tools": _TOOL_CATALOGUE,
         "corpus": _CORPUS_STATS,
