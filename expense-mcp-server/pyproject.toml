@@ -18,6 +18,9 @@ dependencies = [
     "anthropic>=0.117",      # used directly by tools/rag.py
     "psycopg[binary]>=3.2",  # used directly by tools/rag.py
     "redis>=5.0",            # used directly by tools/rag.py
+    "uvicorn>=0.30",         # used directly by transports/sse.py
+    "starlette>=0.37",       # used directly by auth.py
+    "pyjwt[crypto]>=2.8",    # used directly by auth.py (JWKS validation)
     # The W7 D3 sidecar as a path dependency (read-only library reuse):
     "expense_ai @ {root:uri}/../expense-ai",
 ]
@@ -25,6 +28,7 @@ dependencies = [
 [project.scripts]
 expense-mcp-server = "expense_mcp_server.transports.stdio:main"
 expense-mcp-server-sse = "expense_mcp_server.transports.sse:main"
+expense-mcp-server-replay = "expense_mcp_server.scripts.replay:cli"
 
 [dependency-groups]
 dev = [

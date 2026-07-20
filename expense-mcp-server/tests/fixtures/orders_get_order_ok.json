@@ -1,0 +1,18 @@
+{
+  "tool": "orders.get_order",
+  "args": {
+    "order_id": "ord-synth-9001",
+    "tenant_id": "tenant-a"
+  },
+  "mock": {
+    "method": "GET",
+    "url": "https://expense-orders.internal/orders/ord-synth-9001",
+    "status_code": 200,
+    "json": {
+      "order_id": "ord-synth-9001",
+      "tenant_id": "tenant-a",
+      "total": "42.50",
+      "status": "paid"
+    }
+  }
+}

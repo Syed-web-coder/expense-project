@@ -1,0 +1,22 @@
+{
+  "tool": "orders.create_refund",
+  "args": {
+    "order_id": "ord-synth-9001",
+    "amount": "10.00",
+    "reason": "duplicate charge",
+    "tenant_id": "tenant-a",
+    "idempotency_key": "b3f6a1a2-6e0e-4e9a-9f2d-1a2b3c4d5e6f"
+  },
+  "mock": {
+    "method": "POST",
+    "url": "https://expense-orders.internal/orders/ord-synth-9001/refunds",
+    "status_code": 200,
+    "json": {
+      "order_id": "ord-synth-9001",
+      "refund_id": "rfnd-synth-0001",
+      "amount": "10.00",
+      "reason": "duplicate charge",
+      "status": "refunded"
+    }
+  }
+}

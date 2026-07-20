@@ -17,6 +17,7 @@ from mcp.types import ErrorData
 from pydantic import BaseModel, ConfigDict, Field
 
 from expense_mcp_server.app import mcp
+from expense_mcp_server.observability import observe
 
 # ---- Input schemas ---------------------------------------------------------
 
@@ -70,6 +71,7 @@ _DESC_GET_ORDER = (
 
 @mcp.tool(name="orders.get_order", description=_DESC_GET_ORDER)
 @traceable(name="orders.get_order", project_name="expense-mcp-server")
+@observe("orders.get_order")
 async def orders_get_order(args: GetOrderArgs) -> dict[str, object]:
     ctx = mcp.get_context().request_context.lifespan_context
     r = await ctx.http.get(
@@ -97,6 +99,7 @@ _DESC_CREATE_REFUND = (
 
 @mcp.tool(name="orders.create_refund", description=_DESC_CREATE_REFUND)
 @traceable(name="orders.create_refund", project_name="expense-mcp-server")
+@observe("orders.create_refund")
 async def orders_create_refund(args: CreateRefundArgs) -> dict[str, object]:
     ctx = mcp.get_context().request_context.lifespan_context
     payload = {

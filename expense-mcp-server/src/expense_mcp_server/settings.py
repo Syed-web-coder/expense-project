@@ -28,3 +28,10 @@ class Settings(BaseSettings):
     postgres_dsn: str = Field(default="", description="psycopg DSN for the pgvector corpus.")
     redis_url: str = Field(default="redis://localhost:6379")
     anthropic_api_key: str = Field(default="")
+    # SSE transport host/port (EXPENSE_MCP_HOST / EXPENSE_MCP_PORT).
+    host: str = Field(default="0.0.0.0")
+    port: int = Field(default=8080)
+    # JWT validation on the SSE handshake: defensive duplicate of the
+    # W3 D1 Java-side check, done locally against the same JWKS.
+    jwks_url: str = Field(default="https://expense-orders.internal/.well-known/jwks.json")
+    jwt_audience: str = Field(default="expense-mcp-server")

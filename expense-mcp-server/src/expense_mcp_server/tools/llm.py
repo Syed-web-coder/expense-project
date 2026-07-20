@@ -13,6 +13,7 @@ from mcp.types import ErrorData
 from pydantic import BaseModel, ConfigDict, Field
 
 from expense_mcp_server.app import mcp
+from expense_mcp_server.observability import observe
 from expense_mcp_server.tools.orders import _map_http
 
 # ---- Input schemas ---------------------------------------------------------
@@ -44,6 +45,7 @@ _DESC_CHAT = (
 
 @mcp.tool(name="llm.chat", description=_DESC_CHAT)
 @traceable(name="llm.chat", project_name="expense-mcp-server")
+@observe("llm.chat")
 async def llm_chat(args: ChatArgs) -> dict[str, object]:
     ctx = mcp.get_context().request_context.lifespan_context
     payload = {

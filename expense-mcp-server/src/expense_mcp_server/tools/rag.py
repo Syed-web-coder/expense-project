@@ -32,6 +32,7 @@ from mcp.types import ErrorData
 from pydantic import BaseModel, ConfigDict, Field
 
 from expense_mcp_server.app import mcp
+from expense_mcp_server.observability import observe
 from expense_mcp_server.settings import Settings
 
 # ---- Lazily-built, cached RAG dependencies ---------------------------------
@@ -94,6 +95,7 @@ _DESC_RAG = (
 
 @mcp.tool(name="rag.retrieve_and_generate", description=_DESC_RAG)
 @traceable(name="rag.retrieve_and_generate", project_name="expense-mcp-server")
+@observe("rag.retrieve_and_generate")
 async def rag_retrieve_and_generate(args: RagArgs) -> dict[str, object]:
     ctx = mcp.get_context().request_context.lifespan_context
     conn, r, ac = _get_rag_deps(ctx.settings)
