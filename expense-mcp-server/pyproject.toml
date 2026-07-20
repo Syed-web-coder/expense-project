@@ -50,6 +50,11 @@ strict = true
 module = "expense_ai.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# testcontainers ships no py.typed marker either.
+module = "testcontainers.*"
+ignore_missing_imports = true
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -1,0 +1,28 @@
+{
+  "name": "expense-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP surface for expense-orders, llm-proxy, and the W7 D3 RAG pipeline.",
+  "transports": {
+    "stdio": {
+      "command": "uvx",
+      "args": ["expense-mcp-server"]
+    },
+    "sse": {
+      "url": "https://mcp.expense.internal/sse",
+      "auth": "bearer"
+    }
+  },
+  "tools": [
+    "orders.get_order",
+    "orders.create_refund",
+    "llm.chat",
+    "rag.retrieve_and_generate"
+  ],
+  "resources": [
+    "expense://catalogue"
+  ],
+  "observability": {
+    "langsmith_project": "expense-mcp-server"
+  },
+  "forward_hook": "week07_day5_multi_agent_capstone"
+}

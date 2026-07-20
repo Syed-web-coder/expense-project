@@ -56,7 +56,15 @@ class RefundView(BaseModel):
 
 def _map_http(status: int, body: str) -> McpError:
     code = {400: 4001, 401: 4030, 403: 4030, 404: 4040, 409: 4090, 429: 4290}.get(status, 5030)
-    return McpError(ErrorData(code=code, message=body[:200]))
+    # NOTE: FastMCP catches exceptions raised inside a tool handler
+    # (including McpError) and wraps them into a generic ToolError
+    # text using only str(exc) -- McpError's numeric .code is NOT
+    # preserved separately in the tools/call response in this SDK
+    # version. Without embedding the code in the message text itself,
+    # it's silently unreachable by any real caller. Confirmed via a
+    # live subprocess call: str(McpError(ErrorData(code=4040, ...)))
+    # rendered as just the message, with no '4040' anywhere.
+    return McpError(ErrorData(code=code, message=f"[{code}] {body[:200]}"))
 
 # ---- Tool handlers ---------------------------------------------------------
 
@@ -90,7 +98,7 @@ _DESC_CREATE_REFUND = (
     "idempotency_key (UUID v4) on retries and the server returns the "
     "original outcome without double-debiting. Use this when the user "
     "explicitly asks to refund, credit back, or reverse a charge on an "
-    "order; do NOT use it for partial cancellations or order edits. "
+    "order. Do NOT use it for partial cancellations or order edits. "
     "Returns the refund id and the original amount and reason. Requires "
     "the caller JWT to carry 'orders.write' scope (verified by expense-orders.) "
     "Example: order_id='ord-synth-9001', amount='10.00', "

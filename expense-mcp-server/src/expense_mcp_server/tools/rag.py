@@ -90,7 +90,10 @@ _DESC_RAG = (
     "when the user asks for information that lives in the tenant's "
     "documents (policies, prior filings, indexed knowledge base). Do "
     "NOT use this for transactional reads (use orders.get_order) or "
-    "generative chat without grounding (use llm.chat)."
+    "generative chat without grounding (use llm.chat). Example: "
+    "question='What is the per-diem limit for international travel?', "
+    "tenant_id='tenant-a', top_k=6 returns an answer grounded in that "
+    "tenant's indexed travel policy documents."
 )
 
 @mcp.tool(name="rag.retrieve_and_generate", description=_DESC_RAG)
@@ -114,7 +117,7 @@ async def rag_retrieve_and_generate(args: RagArgs) -> dict[str, object]:
             timeout=ctx.settings.tool_timeout_rag_s,
         )
     except asyncio.TimeoutError as exc:
-        raise McpError(ErrorData(code=5040, message="rag timed out")) from exc
+        raise McpError(ErrorData(code=5040, message="[5040] rag timed out")) from exc
 
     citations = [
         Citation(doc_id=c["doc_id"], chunk_text=c["chunk_text"])

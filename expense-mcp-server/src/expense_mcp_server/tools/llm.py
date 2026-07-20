@@ -34,10 +34,10 @@ class ChatArgs(BaseModel):
 _DESC_CHAT = (
     "Send a chat completion request to the cost-tracked LLM gateway. Use "
     "this for general, ungrounded conversational or generative responses "
-    "when the user's question does NOT need to be grounded in the "
-    "tenant's document corpus (for that, use rag.retrieve_and_generate) "
-    "and does NOT involve looking up or modifying an order (use "
-    "orders.get_order / orders.create_refund instead). Returns the "
+    "when the user's question does not need to be grounded in the "
+    "tenant's document corpus (for that, use rag.retrieve_and_generate). "
+    "Do NOT use this to look up or modify an order (use orders.get_order "
+    "or orders.create_refund instead). Returns the "
     "upstream chat completion response. Example: messages=[{role='user', "
     "content='Summarize this expense policy in one sentence.'}], "
     "max_tokens=200, tenant_id='tenant-a'."
@@ -61,7 +61,7 @@ async def llm_chat(args: ChatArgs) -> dict[str, object]:
         },
     )
     if r.status_code == 429:
-        raise McpError(ErrorData(code=4290, message="llm-proxy rate limited"))
+        raise McpError(ErrorData(code=4290, message="[4290] llm-proxy rate limited"))
     if r.status_code != 200:
         raise _map_http(r.status_code, r.text)
     return dict(r.json())

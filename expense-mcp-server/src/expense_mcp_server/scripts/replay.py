@@ -17,6 +17,7 @@ non-zero if any fixture's tool call comes back as an MCP-level error.
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import sys
@@ -32,9 +33,9 @@ FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 OUTPUT_DIR = Path(__file__).resolve().parents[3] / ".replay"
 
 
-def _load_fixtures() -> list[dict[str, Any]]:
+def _load_fixtures(fixtures_dir: Path) -> list[dict[str, Any]]:
     fixtures = []
-    for path in sorted(FIXTURES_DIR.glob("*.json")):
+    for path in sorted(fixtures_dir.glob("*.json")):
         with open(path) as f:
             fixtures.append(json.load(f))
     return fixtures
@@ -60,15 +61,15 @@ async def _run_fixture(client: Any, fixture: dict[str, Any]) -> tuple[str, float
     return fixture["tool"], duration_ms, bool(result.isError)
 
 
-async def main() -> int:
+async def main(fixtures_dir: Path = FIXTURES_DIR) -> int:
     # Importing registers every tool's @mcp.tool decorator on the shared
     # module-level `mcp` instance before we build a session against it.
     from expense_mcp_server.app import mcp
     from expense_mcp_server.tools import _resources, llm, orders  # noqa: F401
 
-    fixtures = _load_fixtures()
+    fixtures = _load_fixtures(fixtures_dir)
     if not fixtures:
-        print(f"No fixtures found under {FIXTURES_DIR}", file=sys.stderr)
+        print(f"No fixtures found under {fixtures_dir}", file=sys.stderr)
         return 1
 
     durations_by_tool: dict[str, list[float]] = {}
@@ -110,7 +111,10 @@ async def main() -> int:
 
 
 def cli() -> None:
-    sys.exit(asyncio.run(main()))
+    parser = argparse.ArgumentParser(description="Replay fixtures through the real MCP dispatch path.")
+    parser.add_argument("--fixtures", type=Path, default=FIXTURES_DIR, help="Directory of fixture JSON files.")
+    args = parser.parse_args()
+    sys.exit(asyncio.run(main(args.fixtures)))
 
 
 if __name__ == "__main__":

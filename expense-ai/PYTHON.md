@@ -37,3 +37,31 @@ The semantic cache key includes `tenant_id` in the sha256 input (`_bucket_key`),
 `rag_svc_ingest.py` wraps all Airflow imports and DAG construction in a `try/except ImportError` block. On Windows (where `apache-airflow` is listed as a dev dependency but fails to install cleanly), `expense_ai_ingest_dag` is set to `None` and the module is still importable. `test_dag_import.py` is decorated with `@pytest.mark.skipif(sys.platform == "win32", ...)` so the full import + structure check only runs in CI (Ubuntu), where Airflow is available.
 
 The `LangSmith run visibility` step in `.github/workflows/python-ci.yml` cannot use the expression `if: ${{ secrets.KEY != '' }}` directly (GitHub does not evaluate secret expressions in `if:` conditions for fork PRs — the secret is always empty there). Instead, a preceding `Set LangSmith key flag` step writes `HAS_LS_KEY=true/false` into `$GITHUB_ENV`, and the visibility step uses `if: env.HAS_LS_KEY == 'true'`. Fork pull requests therefore skip the step cleanly rather than erroring on an exit-code-1 script failure caused by a missing API key.
+
+---
+
+## What W7 D4 adds
+
+A new sibling project, `expense-mcp-server/`, wraps this package's public
+surface (plus the W3 D1 order/refund and llm-proxy chat endpoints) as an
+MCP server consumed by Claude Desktop and the W7 D5 multi-agent
+capstone. It depends on `expense-ai` as a local `uv` path dependency
+(`expense_ai @ {root:uri}/../expense-ai` in its `pyproject.toml`) and
+imports `expense_ai.rag.retrieve_and_generate` directly, in-process,
+rather than over HTTP.
+
+Four MCP tools are published:
+
+- `orders.get_order` -- read a single order by id, scoped to tenant.
+- `orders.create_refund` -- idempotent refund (UUID idempotency key),
+  Decimal amounts constrained to 2 decimal places.
+- `llm.chat` -- thin pass-through to the llm-proxy chat completion
+  endpoint, for ungrounded generative responses.
+- `rag.retrieve_and_generate` -- adapts this package's
+  `retrieve_and_generate` to the MCP tool contract. Note: the real
+  function signature/return shape differs from what a generic MCP
+  reference implementation would assume (no `top_k` param -- rerank
+  depth is hardcoded to 6 internally; returns `text` not `answer`;
+  citations carry `doc_id`/`chunk_text`, not `chunk_id`/`score`) --
+  `expense-mcp-server`'s adapter layer reshapes around the real
+  contract rather than the other way around.
