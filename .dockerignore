@@ -29,3 +29,10 @@ docker-compose.override.yml
 *.md
 docs/
 expense-web/
+
+# Python (expense-mcp-server, expense-ai)
+**/.venv/
+**/__pycache__/
+*.pyc
+**/*.egg-info/
+**/uv.lock.bak

@@ -1,0 +1,40 @@
+name: expense-mcp-server-ci
+
+on:
+  pull_request:
+    paths: ["expense-mcp-server/**"]
+  push:
+    branches: ["main"]
+
+jobs:
+  per-pr:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: expense-mcp-server } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --frozen
+      - name: ruff
+        run: uv run ruff check
+      - name: mypy strict
+        run: uv run mypy --strict src/ tests/
+      - name: unit + schema + smoke
+        env:
+          EXPENSE_MCP_BEARER_JWT: dummy-for-tests
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+        run: uv run pytest -v tests/test_schemas.py tests/test_smoke_stdio.py tests/test_tool_descriptions.py
+      - name: tool fixture replay (CI gate)
+        run: uv run python -m expense_mcp_server.scripts.replay --fixtures tests/fixtures/
+
+  merge-to-main:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: expense-mcp-server } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --frozen
+      - name: testcontainers E2E
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+        run: uv run pytest -v tests/test_e2e_mcp_to_spring.py

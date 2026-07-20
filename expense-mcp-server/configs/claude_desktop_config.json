@@ -1,0 +1,22 @@
+// expense-mcp-server/configs/claude_desktop_config.json
+//
+// Drop into ~/Library/Application Support/Claude/claude_desktop_config.json
+// (macOS) or %APPDATA%/Claude/claude_desktop_config.json (Windows).
+//
+// The env values below are placeholders -- Claude Desktop reads
+// the literal strings, so production loads the JWT from the OS keychain
+// (macOS) or DPAPI (Windows) via a launcher script that writes this
+// file fresh on each Claude Desktop start. Never commit a real token.
+{
+  "mcpServers": {
+    "expense-mcp-server": {
+      "command": "uvx",
+      "args": ["expense-mcp-server"],
+      "env": {
+        "EXPENSE_MCP_BEARER_JWT": "REPLACE_WITH_BEARER_FROM_KEYCHAIN",
+        "EXPENSE_MCP_ORDERS_SVC_URL": "https://expense-orders.internal",
+        "LANGSMITH_API_KEY": "REPLACE_WITH_LANGSMITH_API_KEY_FROM_KEYCHAIN"
+      }
+    }
+  }
+}

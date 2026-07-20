@@ -1,0 +1,21 @@
+{
+  "tool": "llm.chat",
+  "args": {
+    "messages": [
+      {"role": "user", "content": "Summarize this expense policy in one sentence."}
+    ],
+    "max_tokens": 200,
+    "tenant_id": "tenant-a"
+  },
+  "mock": {
+    "method": "POST",
+    "url": "https://llm-proxy.internal/v1/chat/completions",
+    "status_code": 200,
+    "json": {
+      "id": "chatcmpl-synth-0001",
+      "choices": [
+        {"index": 0, "message": {"role": "assistant", "content": "Employees may expense reasonable business costs with a receipt."}}
+      ]
+    }
+  }
+}
