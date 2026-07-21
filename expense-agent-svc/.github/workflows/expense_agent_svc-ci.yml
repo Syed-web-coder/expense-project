@@ -1,0 +1,93 @@
+name: expense-agent-svc CI
+
+on:
+  pull_request:
+    paths:
+      - "expense-agent-svc/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "expense-agent-svc/**"
+
+defaults:
+  run:
+    working-directory: expense-agent-svc
+
+jobs:
+  # ── PR tier: lint → type → test → eval gate ──────────────────────────────
+  pr-checks:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        # pinned to actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check
+
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+      - name: Mypy strict
+        run: uv run mypy src/ tests/
+
+      - name: Pytest
+        env:
+          EXPENSE_AGENT_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: uv run pytest -v
+
+      - name: Eval gate
+        env:
+          EXPENSE_AGENT_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: uv run python -m expense_agent_svc.scripts.eval --gate
+
+  # ── Merge-to-main tier: placeholder ECR push + config bump ───────────────
+  deploy-stubs:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: []  # runs independently of pr-checks (different trigger)
+
+    steps:
+      - name: Checkout
+        # pinned to actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # ── ECR push stub ────────────────────────────────────────────────────
+      # TODO: wire real AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / ECR_REGISTRY
+      # secrets once the ECR repository is provisioned (see cfn/agent-svc-budget.yaml).
+      - name: Build & push Docker image (stub — no real ECR creds yet)
+        run: |
+          echo "[STUB] Would run: docker build -f Dockerfile -t <ECR_REGISTRY>/expense-agent-svc:${{ github.sha }} ."
+          echo "[STUB] Would run: docker push <ECR_REGISTRY>/expense-agent-svc:${{ github.sha }}"
+
+      # ── Config bump stub ─────────────────────────────────────────────────
+      # TODO: replace with a real commit to platform-config repo updating
+      # clusters/prod/expense-agent-svc/values.yaml image tag.
+      - name: Bump image tag in platform-config (stub)
+        run: |
+          echo "[STUB] Would update platform-config clusters/prod/expense-agent-svc/values.yaml"
+          echo "[STUB] image.tag: ${{ github.sha }}"
+          echo "[STUB] Argo CD would then sync automatically (prune+selfHeal enabled)"

@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+evals/last_run.json
+tests/
+.env
+.env.*
+!.env.example
+*.egg-info/
+dist/
+build/
+.git/
+.github/

@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: expense-agent-svc
+  namespace: argocd
+spec:
+  project: acme-platform
+  source:
+    repoURL: https://github.com/uptimecrew/platform-config.git
+    path: clusters/prod/expense-agent-svc
+    targetRevision: main
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: expense-svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

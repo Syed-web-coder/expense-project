@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Monthly Anthropic API cost budget for expense-agent-svc with automatic
+  IAM policy enforcement at 100% threshold.
+
+Parameters:
+  NotificationEmail:
+    Type: String
+    Default: oncall@uptimecrew.io
+
+Resources:
+  AnthropicMonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: expense-agent-anthropic-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: "4000"
+          Unit: USD
+        CostFilters:
+          TagKeyValue:
+            - "user:ServiceName$expense-agent-svc"
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref NotificationEmail
+
+  DenyLlmProxyInvokePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: DenyLlmProxyInvoke
+      Description: "Deny expense-agent-svc access to LLM proxy when budget action fires"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyLlmInvoke
+            Effect: Deny
+            Action:
+              - "execute-api:Invoke"
+              - "lambda:InvokeFunction"
+            Resource: "*"
+            Condition:
+              StringEquals:
+                "aws:ResourceTag/ServiceName": "llm-proxy"
+
+  BudgetCutoffAction:
+    Type: AWS::Budgets::BudgetsAction
+    Properties:
+      BudgetName: !Ref AnthropicMonthlyBudget
+      ActionType: APPLY_IAM_POLICY
+      ActionThreshold:
+        ActionThresholdType: PERCENTAGE
+        ActionThresholdValue: 100
+      ApprovalModel: AUTOMATIC
+      ExecutionRoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/expense-agent-svc-role"
+      Definition:
+        IamActionDefinition:
+          PolicyArn: !Ref DenyLlmProxyInvokePolicy
+          Roles:
+            - expense-agent-svc-role
+      NotificationType: ACTUAL
+      Subscribers:
+        - Address: !Ref NotificationEmail
+          Type: EMAIL
