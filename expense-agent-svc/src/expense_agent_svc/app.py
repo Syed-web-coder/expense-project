@@ -8,7 +8,14 @@ when clients are absent.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import sys
+
+# AsyncPostgresSaver needs SelectorEventLoop; Windows defaults to ProactorEventLoop.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
@@ -145,4 +152,4 @@ async def chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
 
 
 def run() -> None:
-    uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080)
+    uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080, loop="asyncio")

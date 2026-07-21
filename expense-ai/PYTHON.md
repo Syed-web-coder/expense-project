@@ -101,3 +101,7 @@ is absent or equals `"PLACEHOLDER"`.  The CI gate in `scripts/eval.py` treats
 `null` faithfulness as a skip (not a fail), so trajectory-only CI works in
 environments without real credentials.  Faithfulness only runs — and gates —
 when a real key is present.
+
+### (d) Windows selector event-loop policy set at module top
+
+`app.py` calls `asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())` unconditionally on `sys.platform == "win32"` before any uvicorn or asyncio machinery starts.  `AsyncPostgresSaver` uses `psycopg` in async mode, which requires a `SelectorEventLoop`; Windows defaults to `ProactorEventLoop` and raises `psycopg.InterfaceError` at startup without this guard.  `uvicorn.run()` is also called with `loop="asyncio"` so uvicorn does not override the pre-set policy with its own loop selection.
