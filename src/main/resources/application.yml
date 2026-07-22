@@ -6,6 +6,10 @@ spring:
     url: jdbc:postgresql://localhost:5432/postgres
     username: nishi
     driver-class-name: org.postgresql.Driver
+  flyway:
+    schemas: expense
+    baseline-on-migrate: true
+    baseline-version: 4
   jpa:
     hibernate:
       ddl-auto: validate
