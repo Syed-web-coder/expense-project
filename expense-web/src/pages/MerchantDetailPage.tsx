@@ -1,17 +1,29 @@
-import { useEffect, useReducer, useState } from 'react';
-import { fetchMerchant } from '../hooks/useMerchant';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+import { useState } from 'react';
+import { useQuery } from '@apollo/client';
+import { graphql } from '../gql/generated';
 import { FilterStrip } from '../components/FilterStrip';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { ThresholdSlider } from '../components/ThresholdSlider';
 import { ThresholdReadout } from '../components/ThresholdReadout';
-import { detailReducer, INITIAL_DETAIL_STATE } from './MerchantDetailPage.reducer';
+
+export const MerchantDetailDocument = graphql(`
+  query MerchantDetail($id: ID!) {
+    merchant(id: $id) {
+      id
+      mccCode
+      lines {
+        line
+        amount
+      }
+    }
+  }
+`);
 
 type Props = {
   readonly merchantId?: string;
 };
 
 export function MerchantDetailPage({ merchantId = 'stub-id-1' }: Props) {
-  const [state, dispatch] = useReducer(detailReducer, INITIAL_DETAIL_STATE);
   const debouncedSearch = useDebouncedSearch();
   const [shouldThrow, setShouldThrow] = useState(false);
 
@@ -19,36 +31,31 @@ export function MerchantDetailPage({ merchantId = 'stub-id-1' }: Props) {
     throw new Error('Triggered test error');
   }
 
-  useEffect(() => {
-    let cancelled = false;
-    dispatch({ type: 'fetch/start' });
-    fetchMerchant(merchantId)
-      .then((data) => {
-        if (!cancelled) dispatch({ type: 'fetch/success', payload: data });
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          dispatch({ type: 'fetch/error', error: err instanceof Error ? err.message : String(err) });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [merchantId]);
+  const { loading, error, data } = useQuery(MerchantDetailDocument, {
+    variables: { id: merchantId },
+  });
 
-  if (state.status === 'idle' || state.status === 'loading') return <p>Loading…</p>;
-  if (state.status === 'error') return <p>Error: {state.error}</p>;
-  if (state.status === 'empty') return <p>Not found.</p>;
+  if (loading) return <div role="status">Loading…</div>;
+  if (error) return <div role="alert">Error: {error.message}</div>;
+  if (!data?.merchant) return <p>Not found.</p>;
 
-  const { data } = state;
+  const { merchant } = data;
+  const transactionCount = merchant.lines.length;
+  // NOTE: LineItem.amount is a GraphQL Float, not a BigDecimal-as-string,
+  // despite the convention documented in types/merchant.ts ("money is
+  // never represented as a JS number"). Summing floats risks precision
+  // loss on real money; flagged as a real backend/schema gap rather than
+  // silently worked around. toFixed(2) here is a display-only approximation.
+  const totalSpend = merchant.lines.reduce((sum, l) => sum + l.amount, 0).toFixed(2);
+
   return (
     <div>
       <FilterStrip />
       <p>filtering for: '{debouncedSearch}'</p>
-      <h1>{data.id}</h1>
-      <p>MCC Code: {data.mccCode}</p>
-      <p>Transaction Count: {data.transactionCount}</p>
-      <p>Total Spend: {data.totalSpend}</p>
+      <h1>{merchant.id}</h1>
+      <p>MCC Code: {merchant.mccCode}</p>
+      <p>Transaction Count: {transactionCount}</p>
+      <p>Total Spend: {totalSpend}</p>
       <ThresholdSlider />
       <ThresholdReadout />
       {import.meta.env.DEV && (
