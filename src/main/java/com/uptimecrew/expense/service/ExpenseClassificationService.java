@@ -7,6 +7,7 @@ import com.uptimecrew.expense.readmodel.MerchantReadModel;
 import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
 import com.uptimecrew.expense.repository.MerchantRepository;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,19 +47,30 @@ public class ExpenseClassificationService {
         }
         LOG.info("Transaction {} classified as {}", transaction.id(), result);
 
-        MerchantEntity entity = new MerchantEntity(
-            UUID.randomUUID().toString(),
-            transaction.merchantName(),
-            null,
-            Instant.now()
-        );
+        MerchantEntity entity = repository.findByName(transaction.merchantName())
+            .orElseGet(() -> new MerchantEntity(
+                UUID.randomUUID().toString(),
+                transaction.merchantName(),
+                null,
+                Instant.now()
+            ));
         MerchantEntity saved = repository.save(entity);
+
+        List<MerchantReadModel.EmbeddedLine> existingLines = readModelRepository.findById(saved.getId())
+            .map(m -> m.getTransactions() == null ? List.<MerchantReadModel.EmbeddedLine>of() : m.getTransactions())
+            .orElseGet(List::of);
+        MerchantReadModel.EmbeddedLine newLine = new MerchantReadModel.EmbeddedLine(
+            existingLines.size() + 1,
+            transaction.amount()
+        );
+        List<MerchantReadModel.EmbeddedLine> updatedLines = new ArrayList<>(existingLines);
+        updatedLines.add(newLine);
 
         MerchantReadModel projection = new MerchantReadModel(
             saved.getId(),
-            null,
+            saved.getMccCode(),
             Instant.now(),
-            List.of()
+            updatedLines
         );
         readModelRepository.save(projection);
         LOG.info("write-through to mongo id={}", saved.getId());

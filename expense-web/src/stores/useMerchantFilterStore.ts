@@ -11,6 +11,7 @@ type FilterState = {
 
 type FilterActions = {
   readonly setMccFilter:       (next: ReadonlyArray<string>) => void;
+  readonly setDateRange:       (next: readonly [string, string | null]) => void;
   readonly setSearchText:      (next: string)  => void;
   readonly setThreshold:       (next: number)  => void;
   readonly setIncludeArchived: (next: boolean) => void;
@@ -35,6 +36,7 @@ export const useMerchantFilterStore = create<FilterState & FilterActions>()(
       (set) => ({
         ...INITIAL,
         setMccFilter: (next) => set({ mccFilter: next }, false, 'filters/setMccFilter'),
+        setDateRange: (next) => set({ dateRange: next }, false, 'filters/setDateRange'),
         setSearchText: (next) => set({ searchText: next }, false, 'filters/setSearchText'),
         setThreshold: (next) => set({ threshold: next }, false, 'filters/setThreshold'),
         setIncludeArchived: (next) => set({ includeArchived: next }, false, 'filters/setIncludeArchived'),

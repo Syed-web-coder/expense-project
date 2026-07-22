@@ -5,6 +5,7 @@ const MCC_CODES = ['5812', '4121', '7393'] as const;
 export function FilterStrip() {
   const mccFilter = useMerchantFilterStore((s) => s.mccFilter);
   const setMccFilter = useMerchantFilterStore((s) => s.setMccFilter);
+  const setDateRange = useMerchantFilterStore((s) => s.setDateRange);
   const dateRange = useMerchantFilterStore((s) => s.dateRange);
   const setSearchText = useMerchantFilterStore((s) => s.setSearchText);
   const searchText = useMerchantFilterStore((s) => s.searchText);
@@ -28,6 +29,11 @@ export function FilterStrip() {
             type="button"
             aria-pressed={mccFilter.includes(code)}
             onClick={() => toggleMcc(code)}
+            style={
+              mccFilter.includes(code)
+                ? { background: "#2563eb", color: "#fff", borderColor: "#2563eb" }
+                : undefined
+            }
           >
             {code}
           </button>
@@ -36,7 +42,11 @@ export function FilterStrip() {
 
       <label>
         From
-        <input type="date" value={dateRange[0]} readOnly />
+        <input
+          type="date"
+          value={dateRange[0]}
+          onChange={(e) => setDateRange([e.currentTarget.value, dateRange[1]])}
+        />
       </label>
 
       <label>
