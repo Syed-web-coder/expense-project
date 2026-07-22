@@ -13,12 +13,16 @@ WORKDIR /app
 COPY expense-ai/ ./expense-ai/
 
 # Copy the service
-COPY expense-agent-svc/pyproject.toml expense-agent-svc/uv.lock* ./expense-agent-svc/
+COPY expense-agent-svc/pyproject.toml expense-agent-svc/uv.lock* expense-agent-svc/README.md ./expense-agent-svc/
 COPY expense-agent-svc/src/ ./expense-agent-svc/src/
 
 WORKDIR /app/expense-agent-svc
 
-RUN uv sync --frozen --no-dev
+# --no-frozen: uv.lock stores the absolute Windows path for the expense-ai path
+# dependency (uv only makes path deps relative when they are workspace members).
+# Dropping --frozen lets uv re-resolve from pyproject.toml constraints at image-
+# build time, trading bit-for-bit lock reproducibility for cross-platform portability.
+RUN uv sync --no-dev
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8080/healthz || exit 1
