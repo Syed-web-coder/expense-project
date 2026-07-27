@@ -20,8 +20,8 @@ import psycopg
 import pytest
 
 from expense_agent_svc.budgets import BudgetGuard
+from expense_agent_svc.fakes import make_fake_anthropic, make_fake_instructor
 from expense_agent_svc.graph import build_expense_agent_graph
-from expense_agent_svc.nodes.synthesis import FinalAnswer
 from expense_agent_svc.settings import Settings
 
 # ---------------------------------------------------------------------------
@@ -53,67 +53,6 @@ def _make_fake_mcp_session() -> Any:
     call_tool_result.content = [{"type": "text", "text": '{"status": "shipped"}'}]
     session.call_tool = AsyncMock(return_value=call_tool_result)
     return session
-
-
-def _make_fake_anthropic() -> Any:
-    """Returns tool_use on first call, end_turn on subsequent calls."""
-    anthropic = MagicMock()
-
-    call_count = 0
-
-    class _Usage:
-        input_tokens = 100
-        output_tokens = 50
-
-    class _ToolUseBlock:
-        type = "tool_use"
-        id = "tu_0001"
-        name = "orders.get_order"
-        input: dict[str, Any] = {"order_id": "o123"}
-
-    class _TextBlock:
-        type = "text"
-        text = "Order o123 is shipped."
-
-    class _RespToolUse:
-        stop_reason = "tool_use"
-        content = [_ToolUseBlock()]
-        usage = _Usage()
-
-    class _RespEndTurn:
-        stop_reason = "end_turn"
-        content = [_TextBlock()]
-        usage = _Usage()
-
-    async def _create(*args: Any, **kwargs: Any) -> Any:
-        nonlocal call_count
-        call_count += 1
-        return _RespToolUse() if call_count == 1 else _RespEndTurn()
-
-    anthropic.messages = MagicMock()
-    anthropic.messages.create = _create
-    return anthropic
-
-
-def _make_fake_instructor() -> Any:
-    instructor_client = MagicMock()
-
-    class _FakeCompletion:
-        class usage:
-            input_tokens = 200
-            output_tokens = 80
-
-    final_answer = FinalAnswer(
-        text="Travel expenses up to $500 are reimbursable. Order o123 is shipped.",
-        citations=[],
-        confidence=0.85,
-    )
-
-    instructor_client.messages = MagicMock()
-    instructor_client.messages.create_with_completion = AsyncMock(
-        return_value=(final_answer, _FakeCompletion())
-    )
-    return instructor_client
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +92,8 @@ async def test_full_graph_invocation(compiled_graph: Any, pg_dsn: str) -> None:
             "thread_id": "int-test-thread-1",
             "__retriever": _fake_retriever,
             "__mcp_session": _make_fake_mcp_session(),
-            "__anthropic": _make_fake_anthropic(),
-            "__instructor": _make_fake_instructor(),
+            "__anthropic": make_fake_anthropic(),
+            "__instructor": make_fake_instructor(),
             "__budget_guard": guard,
         }
     }

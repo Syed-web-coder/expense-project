@@ -670,7 +670,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=0.34" },
-    { name = "expense-ai", directory = "C:/Users/Admin/expense-project/expense-ai" },
+    { name = "expense-ai", directory = "/Users/nishi/expense-project/expense-ai" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "instructor", specifier = ">=1.4" },
@@ -700,7 +700,7 @@ dev = [
 [[package]]
 name = "expense-ai"
 version = "0.1.0"
-source = { directory = "C:/Users/Admin/expense-project/expense-ai" }
+source = { directory = "/Users/nishi/expense-project/expense-ai" }
 dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },

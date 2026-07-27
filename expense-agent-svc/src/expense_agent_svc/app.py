@@ -15,6 +15,7 @@ from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # ── 2. Anthropic + instructor (guarded by key presence) ───────────────
         anthropic_client: Any = None
         instructor_client: Any = None
+        retriever: Any = None
         if settings.anthropic_api_key is not None:
             try:
                 import instructor as _instructor
@@ -54,6 +56,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 instructor_client = _instructor.from_anthropic(anthropic_client)
             except Exception as exc:
                 logger.warning("anthropic_init_failed: %s", exc)
+        elif settings.use_fake_llm:
+            from expense_agent_svc.fakes import (
+                make_fake_anthropic,
+                make_fake_instructor,
+                make_fake_retriever,
+            )
+
+            logger.warning(
+                "EXPENSE_AGENT_ANTHROPIC_API_KEY not set, "
+                "EXPENSE_AGENT_USE_FAKE_LLM=true — wiring fake LLM clients, "
+                "responses are canned, not real model output"
+            )
+            anthropic_client = make_fake_anthropic()
+            instructor_client = make_fake_instructor()
+            retriever = make_fake_retriever()
         else:
             logger.warning("EXPENSE_AGENT_ANTHROPIC_API_KEY not set — local dev mode")
 
@@ -76,11 +93,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.anthropic_client = anthropic_client
         app.state.instructor_client = instructor_client
         app.state.mcp_session = mcp_session
+        app.state.retriever = retriever
 
         yield
 
 
 app = FastAPI(title="Expense Agent Service", lifespan=lifespan)
+
+# Local-dev CORS: allow any localhost/127.0.0.1 origin (any port) so
+# expense-web's Vite dev server can call this API directly from the browser.
+# NOT for production — tighten to the real deployed frontend origin(s) later.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(BudgetExceeded)
@@ -117,6 +146,8 @@ async def chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
         extras["__instructor"] = request.app.state.instructor_client
     if request.app.state.mcp_session is not None:
         extras["__mcp_session"] = request.app.state.mcp_session
+    if request.app.state.retriever is not None:
+        extras["__retriever"] = request.app.state.retriever
 
     stream = event_stream(
         graph,
