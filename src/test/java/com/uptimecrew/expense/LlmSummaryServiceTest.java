@@ -5,15 +5,14 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.graphql.MerchantSummary;
 import com.uptimecrew.expense.llm.LlmSummaryService;
 import com.uptimecrew.expense.llmproxy.cost.CostObserver;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
+import com.uptimecrew.expense.repository.MerchantRepository;
 import io.opentelemetry.api.OpenTelemetry;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class LlmSummaryServiceTest {
 
     @Mock
-    MerchantReadModelRepository repo;
+    MerchantRepository repo;
 
     @Mock
     CostObserver costMiddleware;
@@ -32,7 +31,7 @@ class LlmSummaryServiceTest {
     @Test
     void summarize_tokenCounts_matchStubValues() {
         when(repo.findById("m1")).thenReturn(Optional.of(
-                new MerchantReadModel("m1", "5411", Instant.now(), List.of())));
+                new MerchantEntity("m1", "Test Merchant", "5411", Instant.now())));
 
         LlmSummaryService service = new LlmSummaryService(
                 StubChatClientFactory.builderReturning(new MerchantSummary(

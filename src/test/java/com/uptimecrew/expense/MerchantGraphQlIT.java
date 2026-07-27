@@ -11,14 +11,13 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
+import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.graphql.MerchantGraphQlController;
 import com.uptimecrew.expense.graphql.MerchantSummary;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
+import com.uptimecrew.expense.repository.MerchantRepository;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,14 +78,12 @@ class MerchantGraphQlIT {
     }
 
     @BeforeAll
-    static void seed(@Autowired MerchantReadModelRepository repo) {
-        repo.deleteAll();
+    static void seed(@Autowired MerchantRepository pgRepo) {
+        pgRepo.deleteAll();
         for (int i = 1; i <= 3; i++) {
-            List<MerchantReadModel.EmbeddedLine> lines = List.of(
-                    new MerchantReadModel.EmbeddedLine(1, new BigDecimal("10.00")),
-                    new MerchantReadModel.EmbeddedLine(2, new BigDecimal("20.00")));
-            repo.save(new MerchantReadModel("seeded-id-" + i, "5411",
-                    Instant.now().minusSeconds(i), lines));
+            pgRepo.save(new MerchantEntity(
+                    "seeded-id-" + i, "Test Merchant " + i, "5411",
+                    Instant.now().minusSeconds(i)));
         }
     }
 

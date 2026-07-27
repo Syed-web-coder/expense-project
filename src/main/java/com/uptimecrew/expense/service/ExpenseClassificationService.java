@@ -4,14 +4,13 @@ import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.model.Transaction;
 import com.uptimecrew.expense.model.TransactionKind;
 import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
 import com.uptimecrew.expense.repository.MerchantRepository;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,17 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExpenseClassificationService {
     private static final Logger LOG = LoggerFactory.getLogger(ExpenseClassificationService.class);
-    public static final String CACHE_NAME = "expense.byId"; 
+    public static final String CACHE_NAME = "expense.byId";
     private final TransactionClassifier strategy;
     private final MerchantRepository repository;
-    private final MerchantReadModelRepository readModelRepository;
 
     public ExpenseClassificationService(TransactionClassifier strategy,
-                                        MerchantRepository repository,
-                                        MerchantReadModelRepository readModelRepository) {
+                                        MerchantRepository repository) {
         this.strategy = Objects.requireNonNull(strategy, "strategy");
         this.repository = Objects.requireNonNull(repository, "repository");
-        this.readModelRepository = Objects.requireNonNull(readModelRepository, "readModelRepository");
     }
 
     @Transactional
@@ -54,37 +50,18 @@ public class ExpenseClassificationService {
                 null,
                 Instant.now()
             ));
-        MerchantEntity saved = repository.save(entity);
-
-        List<MerchantReadModel.EmbeddedLine> existingLines = readModelRepository.findById(saved.getId())
-            .map(m -> m.getTransactions() == null ? List.<MerchantReadModel.EmbeddedLine>of() : m.getTransactions())
-            .orElseGet(List::of);
-        MerchantReadModel.EmbeddedLine newLine = new MerchantReadModel.EmbeddedLine(
-            existingLines.size() + 1,
-            transaction.amount()
-        );
-        List<MerchantReadModel.EmbeddedLine> updatedLines = new ArrayList<>(existingLines);
-        updatedLines.add(newLine);
-
-        MerchantReadModel projection = new MerchantReadModel(
-            saved.getId(),
-            saved.getMccCode(),
-            Instant.now(),
-            updatedLines
-        );
-        readModelRepository.save(projection);
-        LOG.info("write-through to mongo id={}", saved.getId());
-
-        return saved;
+        return repository.save(entity);
     }
 
     @Cacheable(value = CACHE_NAME, unless = "#result == null")
+    @Transactional(readOnly = true)
     public Optional<MerchantReadModel> findById(String id) {
-        LOG.info("cache miss on id={}; reading from mongo", id);
-        Optional<MerchantReadModel> fromMongo = readModelRepository.findById(id);
-        if (fromMongo.isPresent()) return fromMongo;
-
-        return repository.findById(id).map(e ->
-            new MerchantReadModel(e.getId(), e.getMccCode(), Instant.now(), List.of()));
+        LOG.info("cache miss on id={}; reading from postgres", id);
+        return repository.findById(id).map(e -> {
+            List<MerchantReadModel.EmbeddedLine> lines = IntStream.range(0, e.getTransactions().size())
+                    .mapToObj(i -> new MerchantReadModel.EmbeddedLine(i + 1, e.getTransactions().get(i).getAmount()))
+                    .toList();
+            return new MerchantReadModel(e.getId(), e.getMccCode(), e.getCreatedAt(), lines);
+        });
     }
 }

@@ -3,8 +3,10 @@ package com.uptimecrew.expense;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.events.OutboxPoller;
 import com.uptimecrew.expense.graphql.MerchantSummary;
+import com.uptimecrew.expense.repository.MerchantRepository;
 import com.uptimecrew.expense.service.TransactionService;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
@@ -26,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -51,29 +54,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import com.uptimecrew.expense.entity.MerchantEntity;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
-import com.uptimecrew.expense.repository.MerchantRepository;
-import org.junit.jupiter.api.BeforeAll;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 
-// W3 D5 Task 4: asserts trace continuity programmatically via InMemorySpanExporter
-// rather than eyeballing Jaeger. We reuse the W3 D3 four containers and add a fifth
-// (Jaeger all-in-one) purely for realism -- the assertions read finished spans
-// straight out of the in-process OTel SDK, not over HTTP from Jaeger.
-//
-// NOTE: there is no org.testcontainers:jaegertracing module -- Jaeger runs here as
-// a plain GenericContainer on the all-in-one image (note the corrected 1.62.0 tag;
-// the bare "1.62" tag does not exist on Docker Hub).
-//
-// outbox.poll-ms is set to a very high value so the scheduler does not publish
-// outbox events autonomously during the Kafka trace test; we call publishBatch()
-// explicitly within a root span so all child spans share one traceId.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
                 properties = "outbox.poll-ms=9999999")
 @Testcontainers
@@ -112,25 +93,11 @@ class MerchantObservabilityIT {
 
     @TestConfiguration
     static class TestOtelConfig {
-        // Override the OpenTelemetry bean with an SDK whose only exporter is
-        // InMemorySpanExporter, using SimpleSpanProcessor (not the default
-        // BatchSpanProcessor) so finished spans are visible immediately after
-        // each request returns instead of after a ~500ms batching delay.
-        //
-        // We also register this SDK as GlobalOpenTelemetry so that the
-        // opentelemetry-spring-kafka-2.7 producer-side instrumentation (which
-        // reads GlobalOpenTelemetry for W3C traceparent header injection) uses
-        // the same in-memory exporter. Without this, the producer sends messages
-        // with NO traceparent header and the consumer starts an unrelated trace.
         @Bean @Primary
         OpenTelemetry openTelemetry(InMemorySpanExporter exporter) {
             SdkTracerProvider provider = SdkTracerProvider.builder()
                     .addSpanProcessor(SimpleSpanProcessor.create(exporter))
                     .build();
-            // W3CTraceContextPropagator is required so that OutboxPoller.inject()
-            // and TransactionPlacedListener.extract() actually carry the traceparent
-            // header across the Kafka message. Without it, getPropagators() returns
-            // a no-op and the consumer always starts an unrelated root trace.
             OpenTelemetrySdk sdk = OpenTelemetrySdk.builder()
                     .setTracerProvider(provider)
                     .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
@@ -152,9 +119,6 @@ class MerchantObservabilityIT {
                     MerchantSummary.Confidence.HIGH));
         }
 
-        // Bypass real JWT validation in integration tests by accepting any Bearer token
-        // and constructing a Jwt with the claims required by MerchantController's
-        // @PreAuthorize: SCOPE_merchants.read + ROLE_MERCHANT_READER.
         @Bean @Primary
         JwtDecoder testJwtDecoder() {
             return token -> Jwt.withTokenValue(token)
@@ -169,19 +133,8 @@ class MerchantObservabilityIT {
     }
 
     @BeforeAll
-    static void setupSchemaAndSeed(@Autowired MerchantRepository pgRepo,
-                                   @Autowired MerchantReadModelRepository mongoRepo) throws Exception {
-        try (Connection conn = DriverManager.getConnection(
-                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(Files.readString(Path.of("db/V1__schema.sql")));
-            stmt.execute(Files.readString(Path.of("db/V3__outbox.sql")));
-            // V4 adds the idempotency_key column to expense.transaction, which
-            // TransactionEntity maps; without it, recordTransaction() will fail.
-            stmt.execute(Files.readString(Path.of("db/V4__transaction_idempotency_key.sql")));
-        }
+    static void seed(@Autowired MerchantRepository pgRepo) {
         pgRepo.save(new MerchantEntity("seeded-id-1", "Test Merchant", "5943", Instant.now()));
-        mongoRepo.save(new MerchantReadModel("seeded-id-1", "5943", Instant.now(), List.of()));
     }
 
     @BeforeEach
@@ -189,11 +142,11 @@ class MerchantObservabilityIT {
         spanExporter.reset();
     }
 
-    // GET /api/v1/merchants/{id} reads from MongoDB (CQRS read model) — there is no
-    // JDBC/Postgres call on this path. The endpoint also requires SCOPE_merchants.read +
-    // ROLE_MERCHANT_READER, so we send a Bearer token (decoded by the stub JwtDecoder above).
+    // GET /api/v1/merchants/{id} reads from Postgres (JPA) — the endpoint requires
+    // SCOPE_merchants.read + ROLE_MERCHANT_READER, so we send a Bearer token
+    // (decoded by the stub JwtDecoder above).
     @Test
-    void httpRequest_emits_serverSpan_and_mongoChildSpan() {
+    void httpRequest_emits_serverSpan_and_dbChildSpan() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer test-token");
         http.exchange(
@@ -210,29 +163,15 @@ class MerchantObservabilityIT {
                 .findFirst()
                 .orElseThrow();
 
-        boolean hasMongoChild = spans.stream()
+        boolean hasDbChild = spans.stream()
                 .anyMatch(s -> s.getTraceId().equals(server.getTraceId())
-                        && (s.getInstrumentationScopeInfo().getName().toLowerCase().contains("mongo")
-                            || s.getName().toLowerCase().contains("find")));
+                        && s.getAttributes().get(AttributeKey.stringKey("db.system")) != null);
 
-        assertThat(hasMongoChild)
-                .as("expected at least one MongoDB child span sharing the HTTP server traceId")
+        assertThat(hasDbChild)
+                .as("expected at least one DB child span sharing the HTTP server traceId")
                 .isTrue();
     }
 
-    // The Kafka write-through path goes:
-    //   TransactionService.recordTransaction() → JPA (Postgres + outbox)
-    //   → OutboxPoller.publishBatch()          → Kafka send (traceparent injected)
-    //   → TransactionPlacedListener.onMessage() → child span extracted from traceparent
-    //
-    // We wrap both service calls in a manually-started root span so that all JPA
-    // child spans inherit the same traceId. The scheduler is disabled
-    // (outbox.poll-ms=9999999) to prevent it from publishing the event under a
-    // different trace before we call publishBatch() explicitly.
-    //
-    // OutboxPoller now injects the current W3C traceparent into the ProducerRecord
-    // headers, and TransactionPlacedListener extracts it to start its span as a
-    // child — so all spans across JPA + Kafka send + Kafka receive share one traceId.
     @Test
     void kafkaWriteThrough_singleTraceId_endToEnd() {
         Tracer tracer = openTelemetry.getTracer("com.uptimecrew.expense.test");
