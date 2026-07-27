@@ -8,15 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.UUID;
 
 import java.time.Instant;
-import java.util.List;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.uptimecrew.expense.entity.MerchantEntity;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
 import com.uptimecrew.expense.repository.MerchantRepository;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,15 +46,8 @@ class MerchantSecurityIT {
     @Autowired MockMvc mvc;
 
     @BeforeAll
-    static void setup(@Autowired MerchantRepository pgRepo,
-                      @Autowired MerchantReadModelRepository mongoRepo) throws Exception {
-        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
-                PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
-             java.sql.Statement stmt = conn.createStatement()) {
-            stmt.execute(java.nio.file.Files.readString(java.nio.file.Path.of("db/V1__schema.sql")));
-        }
-        pgRepo.save(new MerchantEntity("test-id", "Test Merchant", "5943", java.time.Instant.now()));
-        mongoRepo.save(new MerchantReadModel("test-id", "5943", java.time.Instant.now(), java.util.List.of()));
+    static void setup(@Autowired MerchantRepository pgRepo) {
+        pgRepo.save(new MerchantEntity("test-id", "Test Merchant", "5943", Instant.now()));
     }
 
     @Test

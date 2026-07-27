@@ -24,11 +24,3 @@ INSERT INTO expense.transaction (id, merchant_id, merchant_name, amount, occurre
     ('txn-2026-0005', 'merch-2026-0005', 'tenant-a-streaming', 15.99, '2026-01-05T06:00:00Z', 'DEBIT');
 
 COMMIT;
-
--- Intentional failure test (outside the transaction) — proves CHECK constraint is real.
-BEGIN;
-INSERT INTO expense.transaction (id, merchant_id, merchant_name, amount, occurred_at, kind)
-    VALUES ('txn-bad-001', 'merch-2026-0001', 'tenant-a-grocery', -99.99, NOW(), 'DEBIT');
--- ERROR: new row for relation "transaction" violates check constraint "transaction_amount_check"
--- DETAIL: Failing row contains (txn-bad-001, merch-2026-0001, tenant-a-grocery, -99.99, ...)
-ROLLBACK; 

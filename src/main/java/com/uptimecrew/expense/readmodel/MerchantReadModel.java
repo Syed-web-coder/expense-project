@@ -3,17 +3,11 @@ package com.uptimecrew.expense.readmodel;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "merchants")
 public class MerchantReadModel implements Serializable {
 
-    @Id
     private String id;
 
-    @Indexed
     private String mccCode;
 
     private Instant capturedAt;
