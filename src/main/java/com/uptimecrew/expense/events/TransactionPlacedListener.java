@@ -1,8 +1,6 @@
 package com.uptimecrew.expense.events;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
@@ -52,11 +50,9 @@ public class TransactionPlacedListener {
     };
 
     private final ObjectMapper objectMapper;
-    private final MerchantReadModelRepository readModelRepository;
 
-    public TransactionPlacedListener(ObjectMapper objectMapper, MerchantReadModelRepository readModelRepository) {
+    public TransactionPlacedListener(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
-        this.readModelRepository = readModelRepository;
     }
 
     @KafkaListener(topics = "expense.transactions.v1", groupId = "${spring.kafka.consumer.group-id}")
@@ -78,42 +74,9 @@ public class TransactionPlacedListener {
             TransactionPlacedEvent event = objectMapper.readValue(record.value(),
                     TransactionPlacedEvent.class);
             LOG.info("Consumed TransactionPlaced for transactionId={}", event.transactionId());
-            reprojectMerchant(event);
         } finally {
             span.end();
         }
     }
 
-    // Re-projects this event into the Mongo read model: appends a new
-    // EmbeddedLine to the merchant's transaction list rather than
-    // overwriting it, so repeated events accumulate correctly.
-    private void reprojectMerchant(TransactionPlacedEvent event) {
-        java.util.List<MerchantReadModel.EmbeddedLine> existingLines = readModelRepository
-                .findById(event.merchantId())
-                .map(m -> m.getTransactions() == null
-                        ? java.util.List.<MerchantReadModel.EmbeddedLine>of()
-                        : m.getTransactions())
-                .orElseGet(java.util.List::of);
-        MerchantReadModel.EmbeddedLine newLine = new MerchantReadModel.EmbeddedLine(
-                existingLines.size() + 1,
-                event.amount()
-        );
-        java.util.List<MerchantReadModel.EmbeddedLine> updatedLines =
-                new java.util.ArrayList<>(existingLines);
-        updatedLines.add(newLine);
-
-        String existingMccCode = readModelRepository.findById(event.merchantId())
-                .map(MerchantReadModel::getMccCode)
-                .orElse(null);
-
-        MerchantReadModel projection = new MerchantReadModel(
-                event.merchantId(),
-                event.merchantName(),
-                existingMccCode,
-                java.time.Instant.now(),
-                updatedLines
-        );
-        readModelRepository.save(projection);
-        LOG.info("Re-projected merchant id={} after transaction {}", event.merchantId(), event.transactionId());
-    }
 }
