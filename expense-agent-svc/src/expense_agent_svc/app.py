@@ -8,7 +8,9 @@ when clients are absent.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import sys
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
@@ -32,12 +34,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     async with AsyncExitStack() as stack:
         # ── 1. Postgres checkpointer ──────────────────────────────────────────
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        # On Windows, uvicorn CLI (0.51+) hardcodes ProactorEventLoop which
+        # psycopg async cannot use. Fall back to the sync PostgresSaver when
+        # that happens — LangGraph runs sync checkpointer calls in a thread pool.
+        if sys.platform == "win32" and isinstance(
+            asyncio.get_running_loop(), asyncio.ProactorEventLoop
+        ):
+            from langgraph.checkpoint.postgres import PostgresSaver
 
-        saver: Any = await stack.enter_async_context(
-            AsyncPostgresSaver.from_conn_string(settings.postgres_url)
-        )
-        await saver.setup()
+            saver: Any = stack.enter_context(
+                PostgresSaver.from_conn_string(settings.postgres_url)
+            )
+            saver.setup()
+        else:
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+            saver = await stack.enter_async_context(
+                AsyncPostgresSaver.from_conn_string(settings.postgres_url)
+            )
+            await saver.setup()
         graph = build_expense_agent_graph(settings, checkpointer=saver)
 
         # ── 2. Anthropic + instructor (guarded by key presence) ───────────────
@@ -145,4 +160,12 @@ async def chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
 
 
 def run() -> None:
-    uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080)
+    # uvicorn 0.51+ asyncio_loop_factory hardcodes ProactorEventLoop on Windows,
+    # ignoring any event-loop policy. Use loop="none" so get_loop_factory() returns
+    # None, then drive the server ourselves with an explicit SelectorEventLoop factory.
+    # On non-Windows, fall back to uvicorn's normal loop management.
+    if sys.platform == "win32":
+        config = uvicorn.Config("expense_agent_svc.app:app", host="0.0.0.0", port=8080, loop="none")
+        asyncio.run(uvicorn.Server(config).serve(), loop_factory=asyncio.SelectorEventLoop)
+    else:
+        uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080)
