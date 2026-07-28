@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     postgres_url: str = "postgresql://postgres:postgres@localhost:5432/postgres"
     anthropic_api_key: SecretStr | None = None
+    use_fake_llm: bool = False
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "expense-agent-svc-dev"
     mcp_sse_url: str = "http://localhost:9000/sse"
