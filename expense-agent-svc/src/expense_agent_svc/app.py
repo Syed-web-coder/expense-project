@@ -56,11 +56,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             await saver.setup()
         graph = build_expense_agent_graph(settings, checkpointer=saver)
 
-        # ── 2. Anthropic + instructor (guarded by key presence) ───────────────
+        # ── 2. Anthropic + instructor ─────────────────────────────────────────
         anthropic_client: Any = None
         instructor_client: Any = None
         retriever: Any = None
-        if settings.anthropic_api_key is not None:
+
+        if settings.use_fake_llm:
+            from expense_agent_svc.fakes import (
+                make_fake_anthropic,
+                make_fake_instructor,
+                make_fake_retriever,
+            )
+
+            anthropic_client = make_fake_anthropic()
+            instructor_client = make_fake_instructor()
+            retriever = make_fake_retriever()
+            logger.info("fake_llm_mode_active — using canned responses (no API keys needed)")
+        elif settings.anthropic_api_key is not None:
             try:
                 import instructor as _instructor
                 from anthropic import AsyncAnthropic
@@ -71,27 +83,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 instructor_client = _instructor.from_anthropic(anthropic_client)
             except Exception as exc:
                 logger.warning("anthropic_init_failed: %s", exc)
-        elif settings.use_fake_llm:
-            from expense_agent_svc.fakes import (
-                make_fake_anthropic,
-                make_fake_instructor,
-                make_fake_retriever,
-            )
-
-            logger.warning(
-                "EXPENSE_AGENT_ANTHROPIC_API_KEY not set, "
-                "EXPENSE_AGENT_USE_FAKE_LLM=true — wiring fake LLM clients, "
-                "responses are canned, not real model output"
-            )
-            anthropic_client = make_fake_anthropic()
-            instructor_client = make_fake_instructor()
-            retriever = make_fake_retriever()
         else:
             logger.warning("EXPENSE_AGENT_ANTHROPIC_API_KEY not set — local dev mode")
 
-        # ── 3. MCP SSE session (guarded by URL availability) ─────────────────
+        # ── 3. MCP SSE session ────────────────────────────────────────────────
         mcp_session: Any = None
-        if settings.mcp_sse_url:
+        if settings.use_fake_llm:
+            from expense_agent_svc.fakes import make_fake_mcp_session
+
+            mcp_session = make_fake_mcp_session()
+        elif settings.mcp_sse_url:
             try:
                 from mcp import ClientSession
                 from mcp.client.sse import sse_client
