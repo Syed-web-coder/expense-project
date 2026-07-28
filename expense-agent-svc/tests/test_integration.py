@@ -22,6 +22,7 @@ import pytest
 from expense_agent_svc.budgets import BudgetGuard
 from expense_agent_svc.fakes import make_fake_anthropic, make_fake_instructor
 from expense_agent_svc.graph import build_expense_agent_graph
+from expense_agent_svc.nodes.synthesis import FinalAnswer
 from expense_agent_svc.settings import Settings
 
 # ---------------------------------------------------------------------------

@@ -65,3 +65,39 @@ Four MCP tools are published:
   citations carry `doc_id`/`chunk_text`, not `chunk_id`/`score`) --
   `expense-mcp-server`'s adapter layer reshapes around the real
   contract rather than the other way around.
+
+
+## What W7 D5 adds
+
+A new sibling project, `expense-agent-svc/`, is the LangGraph capstone that
+calls this package's `rag.retrieve_chunks` from within the `retrieval_agent`
+node.  Three architectural deviations from standard LangGraph guidance are
+worth noting:
+
+### (a) Injectable clients live in `config["configurable"]`, not in state
+
+Non-JSON-serialisable objects (`AsyncAnthropic`, instructor client, MCP
+`ClientSession`) cannot be stored in `AgentState` because `PostgresSaver`
+serialises the entire state dict to JSON on every checkpoint write.  The
+`_get_dep(config, state, key)` helper checks `config["configurable"]` first
+and falls back to state for backward compat.  Tests pass fakes in
+`config["configurable"]`; the app lifespan injects production clients the
+same way.  No client object ever enters a Postgres row.
+
+### (b) `Optional[RunnableConfig]` is kept — not modernised to `X | None`
+
+`ruff` (UP045) would prefer `RunnableConfig | None`.  We ignore UP045
+because LangGraph's node-signature inspector matches the annotation string
+`"Optional[RunnableConfig]"` to decide whether to inject a config.  The
+bare-union form is not matched, causing config to be silently dropped and
+all `_get_dep` lookups to fall back to state (where the clients don't live).
+The `pyproject.toml` ruff config documents this explicitly.
+
+### (c) RAGAS faithfulness eval is null-guarded
+
+`run_eval()` in `evals/trajectory.py` records `"faithfulness": null` and a
+`faithfulness_skipped_reason` string whenever `EXPENSE_AI_ANTHROPIC_API_KEY`
+is absent or equals `"PLACEHOLDER"`.  The CI gate in `scripts/eval.py` treats
+`null` faithfulness as a skip (not a fail), so trajectory-only CI works in
+environments without real credentials.  Faithfulness only runs — and gates —
+when a real key is present.

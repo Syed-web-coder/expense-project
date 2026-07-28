@@ -6,9 +6,9 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
+import com.uptimecrew.expense.entity.MerchantEntity;
 import com.uptimecrew.expense.graphql.MerchantSummary;
-import com.uptimecrew.expense.readmodel.MerchantReadModel;
-import com.uptimecrew.expense.readmodel.MerchantReadModelRepository;
+import com.uptimecrew.expense.repository.MerchantRepository;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Span;
@@ -28,14 +28,8 @@ import com.uptimecrew.expense.llmproxy.cost.CostObserver;
 import com.uptimecrew.expense.llmproxy.cost.UpstreamResponse;
 import java.time.Instant;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-// Task 3 (W3 D5): wraps the LLM call in a manual io.opentelemetry.api.trace.Span
-// named "llm.summarize" so the LLM segment is visible in Jaeger as a child of
-// whatever resolver/controller span is current, carrying llm.model /
-// llm.tokens.in / llm.tokens.out attributes read off
-// ChatResponse.getMetadata().getUsage(). Switched from .entity(MerchantSummary.class)
-// to .chatResponse() + manual JSON parsing because .entity(...) doesn't expose
-// token usage and we don't want to make two separate LLM calls.
 @Service
 public class LlmSummaryService {
 
@@ -47,7 +41,7 @@ public class LlmSummaryService {
     private static final AttributeKey<Long>   ATTR_TOKENS_OUT   = AttributeKey.longKey("llm.tokens.out");
 
     private final ChatClient chatClient;
-    private final MerchantReadModelRepository readModelRepository;
+    private final MerchantRepository merchantRepository;
     private final ObjectMapper mapper;
     private final JsonSchema schema;
     private final Tracer tracer;
@@ -55,12 +49,12 @@ public class LlmSummaryService {
     private final CostObserver costMiddleware;
 
     public LlmSummaryService(ChatClient.Builder chatClientBuilder,
-                             MerchantReadModelRepository readModelRepository,
+                             MerchantRepository merchantRepository,
                              ObjectMapper mapper,
                              OpenTelemetry openTelemetry,
                              CostObserver costMiddleware) {
         this.chatClient = chatClientBuilder.build();
-        this.readModelRepository = readModelRepository;
+        this.merchantRepository = merchantRepository;
         this.mapper = mapper;
         this.tracer = openTelemetry.getTracer("com.uptimecrew.expense.llm");
         this.configuredModel = "claude-sonnet-4-5";
@@ -75,14 +69,15 @@ public class LlmSummaryService {
         }
     }
 
+    @Transactional(readOnly = true)
     public MerchantSummary summarize(String id) {
-        MerchantReadModel doc = readModelRepository.findById(id)
+        MerchantEntity entity = merchantRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("unknown id " + id));
 
         String prompt = "Summarise this merchant as a JSON object "
                 + "that matches the MerchantSummary schema. Output JSON only, "
-                + "no prose. Domain data: mccCode=" + doc.getMccCode()
-                + " transactions=" + (doc.getTransactions() == null ? 0 : doc.getTransactions().size());
+                + "no prose. Domain data: mccCode=" + entity.getMccCode()
+                + " transactions=" + entity.getTransactions().size();
 
         Span span = tracer.spanBuilder("llm.summarize")
                 .setSpanKind(SpanKind.CLIENT)

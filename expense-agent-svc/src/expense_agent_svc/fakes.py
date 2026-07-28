@@ -55,7 +55,9 @@ _PRESETS: list[
         "You went to Costco 4 times this month, totaling $312.47.",
     ),
     (
-        lambda q: _has_any(q, "today", "current date", "what's the date", "what is the date", "date"),
+        lambda q: _has_any(
+            q, "today", "current date", "what's the date", "what is the date", "date"
+        ),
         "system.clock",
         {},
         _today_text,
@@ -111,6 +113,21 @@ def _extract_question(kwargs: dict[str, Any]) -> str:
             if isinstance(content, str):
                 return content
     return ""
+
+
+def make_fake_mcp_session() -> Any:
+    session = AsyncMock()
+    tool = MagicMock()
+    tool.name = "orders.get_order"
+    tool.description = "Fetch an order by ID"
+    tool.inputSchema = {"type": "object", "properties": {"order_id": {"type": "string"}}}
+    list_tools_result = MagicMock()
+    list_tools_result.tools = [tool]
+    session.list_tools = AsyncMock(return_value=list_tools_result)
+    call_tool_result = MagicMock()
+    call_tool_result.content = [{"type": "text", "text": '{"status": "ok"}'}]
+    session.call_tool = AsyncMock(return_value=call_tool_result)
+    return session
 
 
 def make_fake_anthropic() -> Any:
@@ -206,4 +223,3 @@ def make_fake_retriever() -> Any:
         ][:k]
 
     return _retrieve
-

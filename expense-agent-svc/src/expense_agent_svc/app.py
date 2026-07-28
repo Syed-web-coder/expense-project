@@ -8,7 +8,9 @@ when clients are absent.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import sys
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any
@@ -30,22 +32,45 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
-
     async with AsyncExitStack() as stack:
         # ── 1. Postgres checkpointer ──────────────────────────────────────────
-        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+        # On Windows, uvicorn CLI (0.51+) hardcodes ProactorEventLoop which
+        # psycopg async cannot use. Fall back to the sync PostgresSaver when
+        # that happens — LangGraph runs sync checkpointer calls in a thread pool.
+        if sys.platform == "win32" and isinstance(
+            asyncio.get_running_loop(), asyncio.ProactorEventLoop
+        ):
+            from langgraph.checkpoint.postgres import PostgresSaver
 
-        saver: Any = await stack.enter_async_context(
-            AsyncPostgresSaver.from_conn_string(settings.postgres_url)
-        )
-        await saver.setup()
+            saver: Any = stack.enter_context(
+                PostgresSaver.from_conn_string(settings.postgres_url)
+            )
+            saver.setup()
+        else:
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+            saver = await stack.enter_async_context(
+                AsyncPostgresSaver.from_conn_string(settings.postgres_url)
+            )
+            await saver.setup()
         graph = build_expense_agent_graph(settings, checkpointer=saver)
 
-        # ── 2. Anthropic + instructor (guarded by key presence) ───────────────
+        # ── 2. Anthropic + instructor ─────────────────────────────────────────
         anthropic_client: Any = None
         instructor_client: Any = None
         retriever: Any = None
-        if settings.anthropic_api_key is not None:
+        if settings.use_fake_llm:
+            from expense_agent_svc.fakes import (
+                make_fake_anthropic,
+                make_fake_instructor,
+                make_fake_retriever,
+            )
+
+            anthropic_client = make_fake_anthropic()
+            instructor_client = make_fake_instructor()
+            retriever = make_fake_retriever()
+            logger.info("fake_llm_mode_active — using canned responses (no API keys needed)")
+        elif settings.anthropic_api_key is not None:
             try:
                 import instructor as _instructor
                 from anthropic import AsyncAnthropic
@@ -56,27 +81,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 instructor_client = _instructor.from_anthropic(anthropic_client)
             except Exception as exc:
                 logger.warning("anthropic_init_failed: %s", exc)
-        elif settings.use_fake_llm:
-            from expense_agent_svc.fakes import (
-                make_fake_anthropic,
-                make_fake_instructor,
-                make_fake_retriever,
-            )
-
-            logger.warning(
-                "EXPENSE_AGENT_ANTHROPIC_API_KEY not set, "
-                "EXPENSE_AGENT_USE_FAKE_LLM=true — wiring fake LLM clients, "
-                "responses are canned, not real model output"
-            )
-            anthropic_client = make_fake_anthropic()
-            instructor_client = make_fake_instructor()
-            retriever = make_fake_retriever()
         else:
             logger.warning("EXPENSE_AGENT_ANTHROPIC_API_KEY not set — local dev mode")
 
-        # ── 3. MCP SSE session (guarded by URL availability) ─────────────────
+        # ── 3. MCP SSE session ────────────────────────────────────────────────
         mcp_session: Any = None
-        if settings.mcp_sse_url:
+        if settings.use_fake_llm:
+            from expense_agent_svc.fakes import make_fake_mcp_session
+
+            mcp_session = make_fake_mcp_session()
+        elif settings.mcp_sse_url:
             try:
                 from mcp import ClientSession
                 from mcp.client.sse import sse_client
@@ -94,7 +108,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.instructor_client = instructor_client
         app.state.mcp_session = mcp_session
         app.state.retriever = retriever
-
         yield
 
 
@@ -176,4 +189,12 @@ async def chat_stream(body: ChatRequest, request: Request) -> StreamingResponse:
 
 
 def run() -> None:
-    uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080)
+    # uvicorn 0.51+ asyncio_loop_factory hardcodes ProactorEventLoop on Windows,
+    # ignoring any event-loop policy. Use loop="none" so get_loop_factory() returns
+    # None, then drive the server ourselves with an explicit SelectorEventLoop factory.
+    # On non-Windows, fall back to uvicorn's normal loop management.
+    if sys.platform == "win32":
+        config = uvicorn.Config("expense_agent_svc.app:app", host="0.0.0.0", port=8080, loop="none")
+        asyncio.run(uvicorn.Server(config).serve(), loop_factory=asyncio.SelectorEventLoop)
+    else:
+        uvicorn.run("expense_agent_svc.app:app", host="0.0.0.0", port=8080)
