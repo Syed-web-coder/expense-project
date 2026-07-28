@@ -1,6 +1,6 @@
 import { useMerchantFilterStore } from '../stores/useMerchantFilterStore';
 
-const MCC_CODES = ['5812', '4121', '7393'] as const;
+const MCC_CODES = ['5812', '5411', '4111', '4911', '7922'] as const;
 
 export function FilterStrip() {
   const mccFilter = useMerchantFilterStore((s) => s.mccFilter);

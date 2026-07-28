@@ -9,6 +9,7 @@ type Mutation {
 
 type Merchant {
     id: ID!
+    name: String
     mccCode: String
     capturedAt: String
     lines: [LineItem!]!

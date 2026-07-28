@@ -117,7 +117,6 @@ def _extract_question(kwargs: dict[str, Any]) -> str:
 
 def make_fake_mcp_session() -> Any:
     session = AsyncMock()
-
     tool = MagicMock()
     tool.name = "orders.get_order"
     tool.description = "Fetch an order by ID"
@@ -125,7 +124,6 @@ def make_fake_mcp_session() -> Any:
     list_tools_result = MagicMock()
     list_tools_result.tools = [tool]
     session.list_tools = AsyncMock(return_value=list_tools_result)
-
     call_tool_result = MagicMock()
     call_tool_result.content = [{"type": "text", "text": '{"status": "ok"}'}]
     session.call_tool = AsyncMock(return_value=call_tool_result)
