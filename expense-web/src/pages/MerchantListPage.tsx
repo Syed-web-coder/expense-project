@@ -165,7 +165,7 @@ export function MerchantListPage() {
 
         <div style={card}>
           <h2 style={{ fontSize: 18, marginTop: 0, marginBottom: 16 }}>Add expense</h2>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => { void handleSubmit(e); }}>
             <div style={{ marginBottom: 14 }}>
               <label htmlFor="merchantName" style={label}>Merchant name</label>
               <input

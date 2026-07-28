@@ -24,7 +24,7 @@ function MerchantDetailRoute() {
   // matched '/merchants/:id' route. useParams()'s wider return type is
   // just React Router being conservative about routes with optional
   // segments elsewhere in the tree -- not the case for this one.
-  return <MerchantDetailPage merchantId={id!} />;
+  return <MerchantDetailPage merchantId={id} />;
 }
 
 export const router = createBrowserRouter([

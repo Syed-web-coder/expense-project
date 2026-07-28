@@ -4,7 +4,7 @@ import { graphql } from '../gql/generated';
 import { ThresholdSlider } from '../components/ThresholdSlider';
 import { ThresholdReadout } from '../components/ThresholdReadout';
 
-const MCC_CATEGORIES = {
+const MCC_CATEGORIES: Record<string, string> = {
   '4111': 'Transportation',
   '4911': 'Utilities',
   '4121': 'Rideshare',

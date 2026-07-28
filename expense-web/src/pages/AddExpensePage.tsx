@@ -21,8 +21,8 @@ export function AddExpensePage() {
       if (!res.ok) {
         throw new Error(`Request failed: ${res.status}`);
       }
-      const merchant = await res.json();
-      navigate(`/merchants/${merchant.id}`);
+      const merchant = (await res.json()) as { id: string };
+      void navigate(`/merchants/${merchant.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -33,7 +33,7 @@ export function AddExpensePage() {
   return (
     <div>
       <h1>Add expense</h1>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={(e) => { void handleSubmit(e); }}>
         <div>
           <label htmlFor="merchantName">Merchant name</label>
           <input

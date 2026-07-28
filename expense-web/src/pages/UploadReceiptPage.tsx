@@ -16,17 +16,17 @@ const label = {
 
 export function UploadReceiptPage() {
   const [dragOver, setDragOver] = useState(false);
-  const [fileName, setFileName] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [merchantName, setMerchantName] = useState('');
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  function handleFile(file) {
+  function handleFile(file: File) {
     setFileName(file.name);
     const guess = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
     setMerchantName((current) => current || guess);
@@ -37,14 +37,14 @@ export function UploadReceiptPage() {
     }
   }
 
-  function onDrop(e) {
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (file) handleFile(file);
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
@@ -57,9 +57,9 @@ export function UploadReceiptPage() {
       if (!res.ok) {
         throw new Error('Request failed: ' + res.status);
       }
-      const merchant = await res.json();
+      const merchant = (await res.json()) as { id: string };
       setSuccess(true);
-      setTimeout(function () { navigate('/merchants/' + merchant.id); }, 800);
+      setTimeout(function () { void navigate('/merchants/' + merchant.id); }, 800);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -73,17 +73,24 @@ export function UploadReceiptPage() {
       <p style={{ color: '#9a9aa8', marginTop: 4, marginBottom: 28 }}>Add an expense by uploading a receipt</p>
 
       <div
+        role="button"
+        tabIndex={0}
         style={Object.assign({}, card, {
           border: dragOver ? '2px dashed #7c3aed' : '2px dashed #26262f',
           textAlign: 'center',
           padding: '48px 24px',
           marginBottom: 24,
           cursor: 'pointer',
-        })}
+        }) as React.CSSProperties}
         onDragOver={function (e) { e.preventDefault(); setDragOver(true); }}
         onDragLeave={function () { setDragOver(false); }}
         onDrop={onDrop}
-        onClick={function () { inputRef.current && inputRef.current.click(); }}
+        onClick={function () { inputRef.current?.click(); }}
+        onKeyDown={function (e: React.KeyboardEvent<HTMLDivElement>) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            inputRef.current?.click();
+          }
+        }}
       >
         <input
           ref={inputRef}
@@ -117,7 +124,7 @@ export function UploadReceiptPage() {
           <p style={{ color: '#9a9aa8', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
             We could not read the receipt automatically. Confirm the details below.
           </p>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => { void handleSubmit(e); }}>
             <div style={{ marginBottom: 14 }}>
               <label htmlFor="merchantName" style={label}>Merchant name</label>
               <input

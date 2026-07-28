@@ -75,7 +75,6 @@ export function ChatWidget() {
         });
       }
 
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -156,7 +155,7 @@ export function ChatWidget() {
               );
             })}
           </div>
-          <form onSubmit={handleSend} style={{ display: 'flex', borderTop: '1px solid #26262f', padding: 10, gap: 8 }}>
+          <form onSubmit={(e) => { void handleSend(e); }} style={{ display: 'flex', borderTop: '1px solid #26262f', padding: 10, gap: 8 }}>
             <input
               value={input}
               onChange={function (e) { setInput(e.target.value); }}
