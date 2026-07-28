@@ -41,6 +41,9 @@ public class SecurityConfig {
                 .requestMatchers("/mcp", "/mcp/**").permitAll()
                 // GraphQL transport is open; field-level authorization via @PreAuthorize
                 .requestMatchers("/graphql", "/graphql/**", "/graphiql", "/graphiql/**").permitAll()
+                // Manual expense-entry endpoint used by the simple add-expense
+                // form; not behind auth since there's no login flow driving it yet.
+                .requestMatchers("/api/v1/merchants/expenses").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll())
             .oauth2ResourceServer(o -> o.jwt(jwt -> jwt

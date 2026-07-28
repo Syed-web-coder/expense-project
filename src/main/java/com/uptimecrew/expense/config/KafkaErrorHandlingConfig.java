@@ -22,7 +22,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * on to the next message rather than getting stuck forever.
  */
 @Configuration
-public class KafkaConfig {
+public class KafkaErrorHandlingConfig {
 
     @Bean
     public CommonErrorHandler kafkaErrorHandler(KafkaTemplate<String, String> kafkaTemplate) {

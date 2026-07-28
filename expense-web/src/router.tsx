@@ -10,6 +10,8 @@ import { MerchantDetailPage  } from './pages/MerchantDetailPage';
 import { MerchantSummaryPage } from './pages/MerchantSummaryPage';
 import { MerchantChatPanel    } from './pages/MerchantChatPanel';
 import { LoginPage             } from './pages/LoginPage';
+import { AddExpensePage        } from './pages/AddExpensePage';
+import { UploadReceiptPage     } from './pages/UploadReceiptPage';
 
 // The :id route param wasn't being read anywhere -- MerchantDetailPage
 // only accepts a merchantId PROP (it can't call useParams() itself; its
@@ -31,6 +33,8 @@ export const router = createBrowserRouter([
     element: <ProtectedLayout />,
     children: [
       { path: '/merchants',                  element: <MerchantListPage    /> },
+      { path: '/expenses/new',                element: <AddExpensePage      /> },
+      { path: '/upload',                      element: <UploadReceiptPage   /> },
       { path: '/merchants/:id',              element: <MerchantDetailRoute /> },
       { path: '/merchants/:id/summary',      element: <MerchantSummaryPage /> },
       { path: '/merchants/:id/chat',         element: <MerchantChatPanel   /> },

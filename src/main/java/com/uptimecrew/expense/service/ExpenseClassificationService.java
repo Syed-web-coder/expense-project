@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.slf4j.Logger;
@@ -23,6 +24,45 @@ public class ExpenseClassificationService {
     public static final String CACHE_NAME = "expense.byId";
     private final TransactionClassifier strategy;
     private final MerchantRepository repository;
+
+    // Simple keyword-based MCC guesser for merchants created via manual entry
+    // (no MCC supplied by the caller). Falls back to null if nothing matches.
+    private static final Map<String, String> MCC_KEYWORDS = Map.ofEntries(
+        Map.entry("starbucks", "5812"),
+        Map.entry("chick fil a", "5812"),
+        Map.entry("chick-fil-a", "5812"),
+        Map.entry("mcdonald", "5812"),
+        Map.entry("restaurant", "5812"),
+        Map.entry("cafe", "5812"),
+        Map.entry("grocery", "5411"),
+        Map.entry("market", "5411"),
+        Map.entry("target", "5411"),
+        Map.entry("whole foods", "5411"),
+        Map.entry("walmart", "5411"),
+        Map.entry("kroger", "5411"),
+        Map.entry("costco", "5411"),
+        Map.entry("uber", "4121"),
+        Map.entry("lyft", "4121"),
+        Map.entry("transit", "4111"),
+        Map.entry("metro", "4111"),
+        Map.entry("subway", "4111"),
+        Map.entry("bus", "4111"),
+        Map.entry("electric", "4911"),
+        Map.entry("utility", "4911"),
+        Map.entry("netflix", "7922"),
+        Map.entry("spotify", "7922"),
+        Map.entry("streaming", "7922")
+    );
+
+    private static String guessMccCode(String merchantName) {
+        String lower = merchantName.toLowerCase();
+        for (Map.Entry<String, String> entry : MCC_KEYWORDS.entrySet()) {
+            if (lower.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
 
     public ExpenseClassificationService(TransactionClassifier strategy,
                                         MerchantRepository repository) {
@@ -43,11 +83,11 @@ public class ExpenseClassificationService {
         }
         LOG.info("Transaction {} classified as {}", transaction.id(), result);
 
-        MerchantEntity entity = repository.findByName(transaction.merchantName())
+        MerchantEntity entity = repository.findByNameIgnoreCase(transaction.merchantName())
             .orElseGet(() -> new MerchantEntity(
                 UUID.randomUUID().toString(),
                 transaction.merchantName(),
-                null,
+                guessMccCode(transaction.merchantName()),
                 Instant.now()
             ));
         return repository.save(entity);

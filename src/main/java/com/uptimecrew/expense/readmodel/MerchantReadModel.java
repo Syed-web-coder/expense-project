@@ -7,7 +7,7 @@ import java.util.List;
 public class MerchantReadModel implements Serializable {
 
     private String id;
-
+    private String name;
     private String mccCode;
 
     private Instant capturedAt;
@@ -16,14 +16,21 @@ public class MerchantReadModel implements Serializable {
 
     public MerchantReadModel() {}
 
+    // Legacy 4-arg constructor, kept for existing callers/tests. Name defaults to null.
     public MerchantReadModel(String id, String mccCode, Instant capturedAt, List<EmbeddedLine> transactions) {
+        this(id, null, mccCode, capturedAt, transactions);
+    }
+
+    public MerchantReadModel(String id, String name, String mccCode, Instant capturedAt, List<EmbeddedLine> transactions) {
         this.id = id;
+        this.name = name;
         this.mccCode = mccCode;
         this.capturedAt = capturedAt;
         this.transactions = transactions;
     }
 
     public String getId() { return id; }
+    public String getName() { return name; }
     public String getMccCode() { return mccCode; }
     public Instant getCapturedAt() { return capturedAt; }
     public List<EmbeddedLine> getTransactions() { return transactions; }

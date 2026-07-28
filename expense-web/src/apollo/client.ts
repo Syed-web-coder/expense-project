@@ -11,7 +11,10 @@ import { setContext } from '@apollo/client/link/context';
 // that runs on the page. We accept that today because the W6 cookie
 // story (HttpOnly, SameSite=Strict, server-set) isn't built yet —
 // see §9 Sticking Points.
-const httpLink = new HttpLink({ uri: 'http://localhost:8080/graphql' });
+const httpLink = new HttpLink({
+  uri: '/graphql',
+  headers: { 'ngrok-skip-browser-warning': 'true' },
+});
 
 const JWT_PATTERN = /^[^.]+\.[^.]+\.[^.]+$/;
 
