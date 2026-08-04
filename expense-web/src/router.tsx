@@ -9,6 +9,7 @@ import { MerchantListPage    } from './pages/MerchantListPage';
 import { MerchantDetailPage  } from './pages/MerchantDetailPage';
 import { MerchantSummaryPage } from './pages/MerchantSummaryPage';
 import { MerchantChatPanel    } from './pages/MerchantChatPanel';
+import { ChatPage              } from './pages/ChatPage';
 import { LoginPage             } from './pages/LoginPage';
 
 // The :id route param wasn't being read anywhere -- MerchantDetailPage
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: '/merchants/:id',              element: <MerchantDetailRoute /> },
       { path: '/merchants/:id/summary',      element: <MerchantSummaryPage /> },
       { path: '/merchants/:id/chat',         element: <MerchantChatPanel   /> },
+      { path: '/chat',                       element: <ChatPage             /> },
       { path: '/',  element: <Navigate to="/merchants" replace /> },
     ],
   },

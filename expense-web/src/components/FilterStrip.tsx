@@ -21,44 +21,42 @@ export function FilterStrip() {
   }
 
   return (
-    <div>
-      <div role="group" aria-label="MCC code filter">
+    <div className="filter-strip">
+      <div role="group" aria-label="MCC code filter" className="filter-group">
         {MCC_CODES.map((code) => (
           <button
             key={code}
             type="button"
             aria-pressed={mccFilter.includes(code)}
             onClick={() => toggleMcc(code)}
-            style={
-              mccFilter.includes(code)
-                ? { background: "#2563eb", color: "#fff", borderColor: "#2563eb" }
-                : undefined
-            }
+            className={`filter-chip${mccFilter.includes(code) ? ' filter-chip--active' : ''}`}
           >
             {code}
           </button>
         ))}
       </div>
 
-      <label>
+      <label className="filter-label">
         From
         <input
           type="date"
           value={dateRange[0]}
           onChange={(e) => setDateRange([e.currentTarget.value, dateRange[1]])}
+          className="filter-input"
         />
       </label>
 
-      <label>
+      <label className="filter-label">
         Search
         <input
           type="text"
           value={searchText}
           onChange={(e) => setSearchText(e.currentTarget.value)}
+          className="filter-input"
         />
       </label>
 
-      <label>
+      <label className="filter-label">
         Include archived
         <input
           type="checkbox"

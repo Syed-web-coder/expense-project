@@ -1,5 +1,6 @@
 package com.uptimecrew.expense.graphql;
 
+import com.uptimecrew.expense.exception.UnrecognizedMerchantException;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
@@ -15,6 +16,12 @@ public class GraphQlExceptionResolver extends DataFetcherExceptionResolverAdapte
         if (ex instanceof IllegalStateException) {
             return GraphqlErrorBuilder.newError(env)
                     .errorType(ErrorType.BAD_REQUEST)
+                    .message(ex.getMessage())
+                    .build();
+        }
+        if (ex instanceof UnrecognizedMerchantException) {
+            return GraphqlErrorBuilder.newError(env)
+                    .errorType(ErrorType.NOT_FOUND)
                     .message(ex.getMessage())
                     .build();
         }
