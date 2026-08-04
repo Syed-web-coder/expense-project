@@ -45,11 +45,6 @@ services:
       POSTGRES_PASSWORD: expense_dev_password
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
-      - ./db/V1__schema.sql:/migrations/V1__schema.sql:ro
-      - ./db/V2__seed.sql:/migrations/V2__seed.sql:ro
-      - ./db/V3__outbox.sql:/migrations/V3__outbox.sql:ro
-      - ./db/V4__transaction_idempotency_key.sql:/migrations/V4__transaction_idempotency_key.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U expense_dev -d expense_dev"]
       interval: 5s
