@@ -1,15 +1,19 @@
 // src/ProtectedLayout.tsx
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { ChatWidget } from './components/ChatWidget';
+
+const navItems = [
+  { label: 'Merchants',     path: '/merchants' },
+  { label: 'Expense Agent', path: '/chat'      },
+  { label: 'Upload',        path: '/upload'    },
+];
 
 export function ProtectedLayout(): React.ReactElement {
   // THREAT MODEL note: see src/apollo/client.ts — JWT-in-localStorage
   // is an XSS exposure we accept until W6 wires HttpOnly cookies.
   const jwt = localStorage.getItem('uc:jwt');
-  if (jwt === null) return <Navigate to="/login" replace />;
-
   const { pathname } = useLocation();
-  const merchantsActive = pathname.startsWith('/merchants');
-  const chatActive = pathname === '/chat';
+  if (jwt === null) return <Navigate to="/login" replace />;
 
   return (
     <div className="dashboard-layout">
@@ -19,29 +23,26 @@ export function ProtectedLayout(): React.ReactElement {
           <span className="sidebar-title">ExpenseVault</span>
         </div>
         <ul className="sidebar-nav">
-          <li>
-            <a
-              href="/merchants"
-              className={`sidebar-link${merchantsActive ? ' sidebar-link--active' : ''}`}
-              aria-current={merchantsActive ? 'page' : undefined}
-            >
-              Merchants
-            </a>
-          </li>
-          <li>
-            <a
-              href="/chat"
-              className={`sidebar-link${chatActive ? ' sidebar-link--active' : ''}`}
-              aria-current={chatActive ? 'page' : undefined}
-            >
-              Expense Agent
-            </a>
-          </li>
+          {navItems.map((item) => {
+            const active = pathname.startsWith(item.path);
+            return (
+              <li key={item.path}>
+                <a
+                  href={item.path}
+                  className={`sidebar-link${active ? ' sidebar-link--active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            );
+          })}
         </ul>
       </nav>
       <main className="main-content">
         <Outlet />
       </main>
+      <ChatWidget />
     </div>
   );
 }

@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
-
     async with AsyncExitStack() as stack:
         # ── 1. Postgres checkpointer ──────────────────────────────────────────
         # On Windows, uvicorn CLI (0.51+) hardcodes ProactorEventLoop which
@@ -60,7 +59,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         anthropic_client: Any = None
         instructor_client: Any = None
         retriever: Any = None
-
         if settings.use_fake_llm:
             from expense_agent_svc.fakes import (
                 make_fake_anthropic,
@@ -110,7 +108,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.instructor_client = instructor_client
         app.state.mcp_session = mcp_session
         app.state.retriever = retriever
-
         yield
 
 

@@ -110,8 +110,10 @@ export function ChatPage() {
           }
 
           if (prefix === '0') {
-            // Partial text delta — payload is a JSON-encoded string
-            const delta = typeof payload === 'string' ? payload : '';
+            // Partial text delta — payload is {"delta": "<text>"}
+            const delta = typeof (payload as { delta?: string }).delta === 'string'
+              ? (payload as { delta: string }).delta
+              : '';
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMsgId

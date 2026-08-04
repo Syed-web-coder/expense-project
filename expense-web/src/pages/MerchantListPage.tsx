@@ -4,12 +4,14 @@ import { getMccCategory } from '../types/merchant';
 import { FilterStrip } from '../components/FilterStrip';
 import { StatCard } from '../components/StatCard';
 import { AddExpenseForm } from '../components/AddExpenseForm';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useMerchantFilterStore } from '../stores/useMerchantFilterStore';
 
 const LatestMerchantsDocument = graphql(`
   query LatestMerchants {
     latestMerchants(limit: 20) {
       id
+      name
       mccCode
       capturedAt
       lines {
@@ -45,8 +47,8 @@ const AddExpenseDocument = graphql(`
 const currencyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export function MerchantListPage() {
-  const searchText = useMerchantFilterStore((s) => s.searchText);
-  const mccFilter  = useMerchantFilterStore((s) => s.mccFilter);
+  const debouncedSearch = useDebouncedSearch();
+  const mccFilter = useMerchantFilterStore((s) => s.mccFilter);
 
   const { loading, error, data } = useQuery(LatestMerchantsDocument);
   const { data: statsData } = useQuery(DashboardStatsDocument);
@@ -67,8 +69,12 @@ export function MerchantListPage() {
 
   const filtered = merchants.filter((m) => {
     if (mccFilter.length > 0 && !mccFilter.includes(m.mccCode ?? '')) return false;
-    const q = searchText.trim().toLowerCase();
-    if (q && !m.id.toLowerCase().includes(q) && !(m.mccCode ?? '').toLowerCase().includes(q)) return false;
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q) {
+      const nameMatch = (m.name ?? m.id).toLowerCase().includes(q);
+      const mccMatch = (m.mccCode ?? '').toLowerCase().includes(q);
+      if (!nameMatch && !mccMatch) return false;
+    }
     return true;
   });
 
@@ -107,13 +113,12 @@ export function MerchantListPage() {
             <li key={merchant.id} className="merchant-card">
               <a href={`/merchants/${merchant.id}`} className="merchant-card-link">
                 <div className="merchant-card-header">
-                  <span className="merchant-card-id">{merchant.id}</span>
+                  <span className="merchant-card-id">{merchant.name ?? merchant.id}</span>
                   <span className={`mcc-badge mcc-badge--${category.color}`}>
                     {category.label}
                   </span>
                 </div>
                 <div className="merchant-card-meta">
-                  <span className="mcc-code-chip">{merchant.mccCode}</span>
                   <span className="merchant-card-date">captured {merchant.capturedAt}</span>
                   <span className="merchant-card-lines">
                     {merchant.lines.length} line{merchant.lines.length !== 1 ? 's' : ''}

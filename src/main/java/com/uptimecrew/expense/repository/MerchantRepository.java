@@ -19,6 +19,10 @@ public interface MerchantRepository extends JpaRepository<MerchantEntity, String
     // reuse a merchant instead of creating a duplicate per transaction
     Optional<MerchantEntity> findByName(String name);
 
+    // Case-insensitive variant: "Costco" and "costco" should resolve to the
+    // same merchant rather than creating separate records.
+    Optional<MerchantEntity> findByNameIgnoreCase(String name);
+
     // JPQL: naming convention cannot express GROUP BY / HAVING; returns merchants
     // that have accumulated at least :minCount linked transactions
     @Query("SELECT m FROM MerchantEntity m JOIN m.transactions t " +

@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
  *
  * Intentionally minimal: logs successfully-parsed events and stops there.
  * The point of this listener (for Day 3's purposes) is to exercise the
- * DLQ path in KafkaConfig — a message that fails to parse as JSON throws
+ * DLQ path in KafkaErrorHandlingConfig — a message that fails to parse as JSON throws
  * out of this method, and Spring Kafka's DefaultErrorHandler +
  * DeadLetterPublishingRecoverer take it from there, routing it to
  * expense.transactions.v1.dlq instead of retrying forever or blocking
@@ -78,4 +78,5 @@ public class TransactionPlacedListener {
             span.end();
         }
     }
+
 }

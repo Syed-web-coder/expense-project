@@ -43,9 +43,7 @@ export function AddExpenseForm({ merchants, onSubmit, submitting, error }: AddEx
           >
             <option value="">Select merchant…</option>
             {merchants.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.id}{m.mccCode ? ` (${m.mccCode})` : ''}
-              </option>
+              <option key={m.id} value={m.id}>{m.id}</option>
             ))}
           </select>
         </label>

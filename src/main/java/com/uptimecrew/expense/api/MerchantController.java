@@ -6,6 +6,10 @@ import com.uptimecrew.expense.readmodel.MerchantReadModel;
 import com.uptimecrew.expense.service.ExpenseClassificationService;
 import com.uptimecrew.expense.service.TransactionService;
 import com.uptimecrew.expense.mcp.TransactionView;
+import com.uptimecrew.expense.entity.MerchantEntity;
+import com.uptimecrew.expense.model.Transaction;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestBody;
 import io.swagger.v3.oas.annotations.Operation;
@@ -55,6 +59,24 @@ public class MerchantController {
         this.idempotency = idempotency;
         this.transactionService = transactionService;
     }
+
+    @PostMapping("/expenses")
+    @Operation(summary = "Record an expense by merchant name",
+            description = "Classifies the transaction, creating the merchant if it doesn't already exist by name, and syncs the read model.")
+    public ResponseEntity<MerchantEntity> createExpense(@RequestBody CreateExpenseRequest request) {
+        LOG.info("create expense merchantName={} amount={}", request.merchantName(), request.amount());
+        Transaction transaction = new Transaction(
+                java.util.UUID.randomUUID().toString(),
+                "manual-entry",
+                request.amount(),
+                request.merchantName(),
+                LocalDate.now()
+        );
+        MerchantEntity result = service.classify(transaction);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    public record CreateExpenseRequest(String merchantName, BigDecimal amount) {}
 
     @PostMapping
     @PreAuthorize("hasAuthority('SCOPE_transactions:write')")
