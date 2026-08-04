@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation } from '@apollo/client';
 import { graphql } from '../gql/generated';
+import { getMccCategory } from '../types/merchant';
 import { FilterStrip } from '../components/FilterStrip';
+import { StatCard } from '../components/StatCard';
+import { AddExpenseForm } from '../components/AddExpenseForm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useMerchantFilterStore } from '../stores/useMerchantFilterStore';
 
@@ -20,188 +22,113 @@ const LatestMerchantsDocument = graphql(`
   }
 `);
 
-const MCC_CATEGORIES: Record<string, string> = {
-  '4111': 'Transportation',
-  '4911': 'Utilities',
-  '5411': 'Grocery Stores',
-  '5812': 'Restaurants',
-  '7922': 'Streaming / Entertainment',
-};
+const DashboardStatsDocument = graphql(`
+  query DashboardStats {
+    totalMerchants
+    totalTransactions
+    totalSpend
+    categoryCount
+  }
+`);
 
-const card: React.CSSProperties = {
-  background: '#15151c',
-  border: '1px solid #26262f',
-  borderRadius: 14,
-  padding: '20px 22px',
-};
+const AddExpenseDocument = graphql(`
+  mutation AddExpense($merchantId: ID!, $amount: Float!) {
+    addExpense(merchantId: $merchantId, amount: $amount) {
+      id
+      merchantId
+      merchantName
+      amount
+      occurredAt
+      kind
+    }
+  }
+`);
 
-const label: React.CSSProperties = {
-  fontSize: 13,
-  color: '#9a9aa8',
-  marginBottom: 6,
-};
-
-const bigNumber: React.CSSProperties = {
-  fontSize: 32,
-  fontWeight: 600,
-  color: '#f4f4f6',
-};
+const currencyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export function MerchantListPage() {
-  const { loading, error, data, refetch } = useQuery(LatestMerchantsDocument);
   const debouncedSearch = useDebouncedSearch();
   const mccFilter = useMerchantFilterStore((s) => s.mccFilter);
-  const [merchantName, setMerchantName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      const res = await fetch('/api/v1/merchants/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-        body: JSON.stringify({ merchantName, amount: Number(amount) }),
-      });
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`);
-      }
-      setMerchantName('');
-      setAmount('');
-      await refetch();
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { loading, error, data } = useQuery(LatestMerchantsDocument);
+  const { data: statsData } = useQuery(DashboardStatsDocument);
+
+  const [addExpense, { loading: adding, error: addError }] = useMutation(AddExpenseDocument, {
+    refetchQueries: [DashboardStatsDocument, LatestMerchantsDocument],
+  });
 
   if (loading) {
-    return <div role="status" style={{ color: '#f4f4f6', padding: 24 }}>Loading merchants…</div>;
+    return <div role="status" className="loading-state">Loading merchants…</div>;
   }
 
   if (error) {
-    return <div role="alert" style={{ color: '#f87171', padding: 24 }}>Error: {error.message}</div>;
+    return <div role="alert" className="error-state">Error: {error.message}</div>;
   }
 
-  const filteredMerchants = (data?.latestMerchants ?? []).filter((merchant) => {
-    const matchesSearch = debouncedSearch.trim() === ''
-      || (merchant.name ?? '').toLowerCase().includes(debouncedSearch.trim().toLowerCase());
-    const matchesMcc = mccFilter.length === 0
-      || (merchant.mccCode != null && mccFilter.includes(merchant.mccCode));
-    return matchesSearch && matchesMcc;
+  const merchants = data?.latestMerchants ?? [];
+
+  const filtered = merchants.filter((m) => {
+    if (mccFilter.length > 0 && !mccFilter.includes(m.mccCode ?? '')) return false;
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q) {
+      const nameMatch = (m.name ?? m.id).toLowerCase().includes(q);
+      const mccMatch = (m.mccCode ?? '').toLowerCase().includes(q);
+      if (!nameMatch && !mccMatch) return false;
+    }
+    return true;
   });
 
-  const totalMerchants = filteredMerchants.length;
-  const totalTransactions = filteredMerchants.reduce((sum, m) => sum + m.lines.length, 0);
-  const totalSpend = filteredMerchants
-    .reduce((sum, m) => sum + m.lines.reduce((s, l) => s + l.amount, 0), 0)
-    .toFixed(2);
-  const categoryCount = new Set(filteredMerchants.map((m) => m.mccCode).filter(Boolean)).size;
+  const stats = statsData;
 
   return (
-    <div style={{ background: '#0b0b0f', minHeight: '100vh', color: '#f4f4f6', padding: '32px 40px', fontFamily: 'system-ui, sans-serif' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Dashboard</h1>
-      <p style={{ color: '#9a9aa8', marginTop: 4, marginBottom: 28 }}>Overview of your tracked expenses</p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 16, marginBottom: 28 }}>
-        <div style={card}>
-          <div style={label}>Total merchants</div>
-          <div style={bigNumber}>{totalMerchants}</div>
-        </div>
-        <div style={card}>
-          <div style={label}>Total transactions</div>
-          <div style={bigNumber}>{totalTransactions}</div>
-        </div>
-        <div style={card}>
-          <div style={label}>Total spend</div>
-          <div style={bigNumber}>${totalSpend}</div>
-        </div>
-        <div style={card}>
-          <div style={label}>Categories</div>
-          <div style={bigNumber}>{categoryCount}</div>
-        </div>
+    <div>
+      <div className="page-header">
+        <h2 className="page-title">Dashboard</h2>
+        <p className="page-subtitle">Overview and 20 most recent merchants</p>
       </div>
 
-      <div style={{ ...card, marginBottom: 28 }}>
-        <FilterStrip />
+      <div className="stats-grid">
+        <StatCard label="Total merchants"    value={stats?.totalMerchants    ?? '—'} />
+        <StatCard label="Total transactions" value={stats?.totalTransactions ?? '—'} />
+        <StatCard
+          label="Total spend"
+          value={stats?.totalSpend != null ? currencyFmt.format(stats.totalSpend) : '—'}
+        />
+        <StatCard label="Categories" value={stats?.categoryCount ?? '—'} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20 }}>
-        <div style={card}>
-          <h2 style={{ fontSize: 18, marginTop: 0, marginBottom: 16 }}>Merchants</h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', fontSize: 12, color: '#9a9aa8', textTransform: 'uppercase' }}>
-                <th style={{ paddingBottom: 10 }}>Merchant</th>
-                <th style={{ paddingBottom: 10 }}>Category</th>
-                <th style={{ paddingBottom: 10 }}>Txns</th>
-                <th style={{ paddingBottom: 10 }}>Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMerchants.map((merchant) => {
-                const merchantTotal = merchant.lines.reduce((s, l) => s + l.amount, 0).toFixed(2);
-                const category = merchant.mccCode ? MCC_CATEGORIES[merchant.mccCode] ?? merchant.mccCode : '—';
-                return (
-                  <tr key={merchant.id} style={{ borderTop: '1px solid #26262f' }}>
-                    <td style={{ padding: '10px 0' }}>
-                      <a href={`/merchants/${merchant.id}`} style={{ color: '#a78bfa', textDecoration: 'none' }}>
-                        {merchant.name ?? merchant.id}
-                      </a>
-                    </td>
-                    <td style={{ padding: '10px 0', color: '#c7c7d1' }}>{category}</td>
-                    <td style={{ padding: '10px 0', color: '#c7c7d1' }}>{merchant.lines.length}</td>
-                    <td style={{ padding: '10px 0', color: '#c7c7d1' }}>${merchantTotal}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <AddExpenseForm
+        merchants={merchants}
+        onSubmit={(merchantId, amount) => addExpense({ variables: { merchantId, amount } }).then(() => undefined)}
+        submitting={adding}
+        error={addError?.message}
+      />
 
-        <div style={card}>
-          <h2 style={{ fontSize: 18, marginTop: 0, marginBottom: 16 }}>Add expense</h2>
-          <form onSubmit={(e) => { void handleSubmit(e); }}>
-            <div style={{ marginBottom: 14 }}>
-              <label htmlFor="merchantName" style={label}>Merchant name</label>
-              <input
-                id="merchantName"
-                value={merchantName}
-                onChange={(e) => setMerchantName(e.target.value)}
-                placeholder="Starbucks"
-                required
-                style={{ width: '100%', padding: '10px 12px', background: '#0b0b0f', border: '1px solid #26262f', borderRadius: 8, color: '#f4f4f6' }}
-              />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label htmlFor="amount" style={label}>Amount</label>
-              <input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="6.00"
-                required
-                style={{ width: '100%', padding: '10px 12px', background: '#0b0b0f', border: '1px solid #26262f', borderRadius: 8, color: '#f4f4f6' }}
-              />
-            </div>
-            {submitError && <p role="alert" style={{ color: '#f87171', fontSize: 13 }}>Error: {submitError}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              style={{ width: '100%', padding: '10px 12px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
-            >
-              {submitting ? 'Adding…' : 'Add expense'}
-            </button>
-          </form>
-        </div>
-      </div>
+      <FilterStrip />
+
+      <ul aria-label="merchant-list" className="merchant-list">
+        {filtered.map((merchant) => {
+          const category = getMccCategory(merchant.mccCode);
+          return (
+            <li key={merchant.id} className="merchant-card">
+              <a href={`/merchants/${merchant.id}`} className="merchant-card-link">
+                <div className="merchant-card-header">
+                  <span className="merchant-card-id">{merchant.name ?? merchant.id}</span>
+                  <span className={`mcc-badge mcc-badge--${category.color}`}>
+                    {category.label}
+                  </span>
+                </div>
+                <div className="merchant-card-meta">
+                  <span className="merchant-card-date">captured {merchant.capturedAt}</span>
+                  <span className="merchant-card-lines">
+                    {merchant.lines.length} line{merchant.lines.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

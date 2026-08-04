@@ -19,4 +19,7 @@ public interface RuleRepository extends JpaRepository<RuleEntity, String> {
     @Query("SELECT r.category FROM RuleEntity r " +
            "GROUP BY r.category HAVING COUNT(r) > :minRules")
     List<String> findCategoriesWithMoreThanRules(@Param("minRules") long minRules);
+
+    @Query("SELECT COUNT(DISTINCT r.category) FROM RuleEntity r")
+    long countDistinctCategories();
 }

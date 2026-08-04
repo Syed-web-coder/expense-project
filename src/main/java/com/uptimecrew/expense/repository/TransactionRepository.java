@@ -27,4 +27,7 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
     @Query("SELECT t.merchant FROM TransactionEntity t " +
            "GROUP BY t.merchant HAVING SUM(t.amount) > :threshold")
     List<MerchantEntity> findMerchantsWithTotalSpendAbove(@Param("threshold") BigDecimal threshold);
+
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM TransactionEntity t")
+    BigDecimal sumAllAmounts();
 }

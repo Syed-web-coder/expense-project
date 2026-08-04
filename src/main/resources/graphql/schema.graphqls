@@ -1,10 +1,15 @@
 type Query {
     merchant(id: ID!): Merchant
     latestMerchants(limit: Int = 10): [Merchant!]!
+    totalMerchants: Int!
+    totalTransactions: Int!
+    totalSpend: Float!
+    categoryCount: Int!
 }
 
 type Mutation {
     summarizeMerchant(id: ID!): MerchantSummary!
+    addExpense(merchantId: ID!, amount: Float!): Transaction!
 }
 
 type Merchant {
@@ -18,6 +23,15 @@ type Merchant {
 type LineItem {
     line: Int!
     amount: Float!
+}
+
+type Transaction {
+    id: ID!
+    merchantId: ID!
+    merchantName: String!
+    amount: Float!
+    occurredAt: String!
+    kind: String!
 }
 
 type MerchantSummary {
