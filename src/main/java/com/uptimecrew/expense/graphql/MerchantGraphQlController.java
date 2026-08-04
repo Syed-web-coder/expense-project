@@ -69,6 +69,6 @@ public class MerchantGraphQlController {
         List<MerchantReadModel.EmbeddedLine> lines = IntStream.range(0, txns.size())
                 .mapToObj(i -> new MerchantReadModel.EmbeddedLine(i + 1, txns.get(i).getAmount()))
                 .toList();
-        return new MerchantReadModel(entity.getId(), entity.getMccCode(), entity.getCreatedAt(), lines);
+        return new MerchantReadModel(entity.getId(), entity.getName(), entity.getMccCode(), entity.getCreatedAt(), lines);
     }
 }
