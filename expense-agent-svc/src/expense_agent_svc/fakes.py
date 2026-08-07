@@ -20,6 +20,7 @@ reasoning, and (aside from the date) do not reflect real transaction data.
 """
 
 from __future__ import annotations
+import re
 
 from collections.abc import Callable
 from datetime import date
@@ -42,6 +43,31 @@ def _today_text(_: str) -> str:
     return f"Today's date is {date.today().strftime('%A, %B %d, %Y')}."
 
 
+def _looks_like_bare_merchant(q: str) -> bool:
+    if any(ch.isdigit() for ch in q):
+        return False
+    if len(q) > 40:
+        return False
+    if not re.fullmatch(r"[a-z][a-z0-9&'\- ]*", q):
+        return False
+    other_keywords = (
+        "today", "current date", "date", "how many", "transaction",
+        "total", "spent", "spend", "reimburs", "policy", "week",
+    )
+    return not _has_any(q, *other_keywords)
+
+
+def _merchant_answer(question: str) -> str:
+    match = re.search(r"\bat\s+([A-Za-z][A-Za-z0-9&'\- ]*)", question, re.IGNORECASE)
+    if match:
+        name = match.group(1).strip().title()
+        return f"You went to {name} 4 times this month, totaling $312.47."
+    name = question.strip().title()
+    if name:
+        return f"You went to {name} 4 times this month, totaling $312.47."
+    return "You went to that merchant 4 times this month, totaling $312.47."
+
+
 # Each preset: (match(question) -> bool, tool name, tool input, answer text or answer builder)
 # Order matters — more specific matches must come before broader ones (e.g.
 # "total spent" must be checked before the generic "total" + "week" pair).
@@ -49,10 +75,14 @@ _PRESETS: list[
     tuple[Callable[[str], bool], str, dict[str, Any], str | Callable[[str], str]]
 ] = [
     (
-        lambda q: "costco" in q,
+        lambda q: (
+            bool(re.search(r"\bat\s+[a-z]", q))
+            and _has_any(q, "spend", "spent", "went", "visit")
+        )
+        or _looks_like_bare_merchant(q),
         "transactions.query",
-        {"merchant": "Costco"},
-        "You went to Costco 4 times this month, totaling $312.47.",
+        {"merchant": "dynamic"},
+        _merchant_answer,
     ),
     (
         lambda q: _has_any(
