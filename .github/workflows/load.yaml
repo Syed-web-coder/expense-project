@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Configure AWS via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           # Real, existing role from W6D1 -- expense-api-build-push.
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/expense-api-build-push
