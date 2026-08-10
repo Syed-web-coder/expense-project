@@ -29,9 +29,9 @@ jobs:
         run: kubeconform -strict -summary -schema-location default manifests/
 
       # ----- 2. Spin up k3d (Traefik disabled; we install real NGINX) --
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Build expense-api image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
